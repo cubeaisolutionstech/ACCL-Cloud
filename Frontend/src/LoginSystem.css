@@ -1,0 +1,632 @@
+/* LoginSystem.css */
+/* This file contains CSS that helps Tailwind styles work properly and adds any custom styles needed */
+
+/* For focus ring effect on inputs */
+.focus\:ring-2:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.focus\:border-transparent:focus {
+  border-color: transparent;
+}
+
+/* Gradient background fallback (if Tailwind isn't working) */
+.bg-gradient-to-br {
+  background: linear-gradient(to bottom right, #1e3a8a, #7e22ce, #3730a3);
+}
+
+/* Transitions for hover effects */
+.transition-colors {
+  transition-property: color, background-color, border-color;
+  transition-duration: 150ms;
+}
+
+/* Hover effects */
+.hover\:bg-blue-700:hover {
+  background-color: #1d4ed8;
+}
+
+.hover\:bg-green-700:hover {
+  background-color: #15803d;
+}
+
+.hover\:bg-red-700:hover {
+  background-color: #b91c1c;
+}
+
+.hover\:bg-blue-50:hover {
+  background-color: #eff6ff;
+}
+
+.hover\:bg-gray-50:hover {
+  background-color: #f9fafb;
+}
+
+.hover\:text-gray-800:hover {
+  color: #1f2937;
+}
+
+.hover\:text-blue-800:hover {
+  color: #1e40af;
+}
+
+/* Opacity for disabled buttons */
+.disabled\:opacity-50:disabled {
+  opacity: 0.5;
+}
+
+/* Background colors */
+.bg-blue-100 {
+  background-color: #dbeafe;
+}
+
+.bg-green-100 {
+  background-color: #dcfce7;
+}
+
+.bg-red-100 {
+  background-color: #fee2e2;
+}
+
+.bg-gray-100 {
+  background-color: #f3f4f6;
+}
+
+.bg-gray-50 {
+  background-color: #f9fafb;
+}
+
+.bg-blue-600 {
+  background-color: #2563eb;
+}
+
+.bg-green-600 {
+  background-color: #16a34a;
+}
+
+.bg-red-600 {
+  background-color: #dc2626;
+}
+
+.bg-white {
+  background-color: #ffffff;
+}
+
+/* Text colors */
+.text-blue-600 {
+  color: #2563eb;
+}
+
+.text-green-600 {
+  color: #16a34a;
+}
+
+.text-gray-400 {
+  color: #9ca3af;
+}
+
+.text-gray-600 {
+  color: #4b5563;
+}
+
+.text-gray-800 {
+  color: #1f2937;
+}
+
+.text-blue-700 {
+  color: #1d4ed8;
+}
+
+.text-green-700 {
+  color: #15803d;
+}
+
+.text-red-700 {
+  color: #b91c1c;
+}
+
+.text-white {
+  color: #ffffff;
+}
+
+/* Border colors */
+.border-blue-600 {
+  border-color: #2563eb;
+}
+
+.border-gray-300 {
+  border-color: #d1d5db;
+}
+
+.border-blue-200 {
+  border-color: #bfdbfe;
+}
+
+.border-green-200 {
+  border-color: #bbf7d0;
+}
+
+.border-red-200 {
+  border-color: #fecaca;
+}
+
+/* Utility classes */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.max-w-md {
+  max-width: 32rem;
+}
+
+.p-4 {
+  padding: 1rem;
+}
+
+.p-8 {
+  padding: 2rem;
+}
+
+.p-3 {
+  padding: 0.75rem;
+}
+
+.px-6 {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.pl-12 {
+  padding-left: 3rem;
+}
+
+.pr-12 {
+  padding-right: 3rem;
+}
+
+.pr-4 {
+  padding-right: 1rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
+}
+
+.mb-8 {
+  margin-bottom: 2rem;
+}
+
+.mt-6 {
+  margin-top: 1.5rem;
+}
+
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.rounded-2xl {
+  border-radius: 1rem;
+}
+
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+.border {
+  border-width: 1px;
+}
+
+.border-b-2 {
+  border-bottom-width: 2px;
+}
+
+.shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.tracking-widest {
+  letter-spacing: 0.1em;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.items-center {
+  align-items: center;
+}
+
+
+.justify-center {
+  justify-content: center;
+}
+
+.relative {
+  position: relative;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.left-3 {
+  left: 0.75rem;
+}
+
+.right-3 {
+  right: 0.75rem;
+}
+
+.top-3\.5 {
+  top: 0.70rem;
+}
+
+/* Sizing */
+.w-16 {
+  width: 4rem;
+}
+
+.h-16 {
+  height: 4rem;
+}
+
+.w-8 {
+  width: 2rem;
+}
+
+.h-8 {
+  height: 2rem;
+}
+
+.w-5 {
+  width: 1.25rem;
+}
+
+.h-5 {
+  height: 1.25rem;
+}
+
+.w-4 {
+  width: 1rem;
+}
+
+.h-4 {
+  height: 1rem;
+}
+
+/* Display */
+.inline {
+  display: inline;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.block {
+  display: block;
+}
+
+/* Icon alignment */
+.inline-flex {
+  display: inline-flex;
+}
+
+.align-middle {
+  vertical-align: middle;
+}
+
+/* Input styling */
+input:focus {
+  outline: none;
+}
+/* input[type="text"], input[type="email"], input[type="tel"], input[type="password"] {
+  background: #ffffff !important;
+} */
+
+/* Helper classes */
+.from-blue-900 {
+  --tw-gradient-from: #1e3a8a;
+}
+
+.via-purple-900 {
+  --tw-gradient-via: #7e22ce;
+}
+
+.to-indigo-900 {
+  --tw-gradient-to: #3730a3;
+}
+
+/* Redesigned LoginSystem.css for modern, clean look */
+
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+  /* color: #720909; */
+}
+
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.bg-gradient-to-br {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Card */
+.login-card, .register-card {
+  background: #fff;
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 32px rgba(76, 68, 182, 0.15);
+  max-width: 400px;
+  width: 100%;
+  margin: 2rem auto;
+  padding: 2.5rem 2rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Header Tabs */
+.login-tabs {
+  display: flex;
+  width: 100%;
+  background: #f3f4f6;
+  border-radius: 1rem 1rem 0 0;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+.login-tab {
+  flex: 1;
+  padding: 1rem 0;
+  font-weight: 600;
+  font-size: 1rem;
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.login-tab.active {
+  background: #fff;
+  color: #5a67d8;
+  border-bottom: 2px solid #5a67d8;
+}
+.login-tab:not(.active):hover {
+  color: #222;
+  background: #e9e9f0;
+}
+
+/* Title & Subtitle */
+.login-title, .register-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+.login-subtitle, .register-subtitle {
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* Input Group */
+.input-group {
+  width: 100%;
+  margin-bottom: 1.25rem;
+  position: relative;
+}
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #b0b3c6;
+  pointer-events: none;
+}
+.login-input, .register-input {
+  width: 100%;
+  padding: 0.85rem 1rem 0.85rem 2.75rem;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 0.75rem;
+  background: #f9f9fb;  /* This is overriding your white background */
+  color: #222;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: border 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.login-input:focus, .register-input:focus {
+  border: 1.5px solid #5a67d8;
+  box-shadow: 0 0 0 2px #a3bffa33;
+  background: #fff;
+
+}
+
+/* Password Eye Icon */
+.input-eye {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #b0b3c6;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 2;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.input-eye:hover {
+  color: #5a67d8;
+}
+
+/* Button */
+.login-btn, .register-btn {
+  width: 100%;
+  padding: 0.9rem 0;
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, #5a67d8 60%, #764ba2 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: none;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(90, 103, 216, 0.08);
+}
+.login-btn:hover, .register-btn:hover {
+  background: linear-gradient(90deg, #764ba2 0%, #5a67d8 100%);
+  box-shadow: 0 4px 16px rgba(90, 103, 216, 0.18);
+}
+
+/* Link Button */
+.link-btn {
+  background: none;
+  color: #5a67d8;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  font-size: 1rem;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+.link-btn:hover {
+  color: #764ba2;
+}
+
+/* Message */
+.form-message {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  text-align: center;
+}
+.form-message.error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+.form-message.success {
+  background: #d1fae5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+.form-message.info {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+/* Footer */
+.form-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  color: #888;
+  font-size: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .login-card, .register-card {
+    padding: 1.5rem 0.5rem 1.5rem 0.5rem;
+    max-width: 98vw;
+  }
+  .login-title, .register-title {
+    font-size: 1.3rem;
+  }
+}

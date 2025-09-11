@@ -1,0 +1,401 @@
+/* Combined Data Section Styles */
+.combined-data-section {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.section-header h2 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-header p {
+  color: #7f8c8d;
+  margin-bottom: 20px;
+}
+
+/* Data Status Summary */
+.data-status-summary {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+  border: 1px solid #e9ecef;
+}
+
+.data-status-summary h3 {
+  color: #495057;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.status-column h4 {
+  color: #343a40;
+  margin: 15px 0 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 5px 0;
+}
+
+.status-item span {
+  font-size: 14px;
+}
+
+.row-count {
+  color: #6c757d;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Refresh Section */
+.refresh-section {
+  background: #e3f2fd;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+  text-align: center;
+  border: 1px solid #bbdefb;
+}
+
+.refresh-section .btn {
+  margin-bottom: 10px;
+}
+
+.refresh-note {
+  color: #546e7a;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Excel Generation Section */
+.excel-generation-section {
+  background: #fff;
+  border: 2px solid #28a745;
+  border-radius: 8px;
+  padding: 25px;
+  margin-bottom: 25px;
+}
+
+.excel-generation-section h3 {
+  color: #28a745;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.generation-info {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #155724;
+}
+
+.expected-sheets {
+  margin-bottom: 20px;
+}
+
+.expected-sheets h4 {
+  color: #495057;
+  margin-bottom: 10px;
+}
+
+.sheet-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  color: #28a745;
+  font-size: 14px;
+}
+
+.generation-actions {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.btn-large {
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.excel-info h4 {
+  color: #495057;
+  margin-bottom: 10px;
+}
+
+.content-summary {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 15px;
+  border: 1px solid #dee2e6;
+}
+
+.content-item {
+  color: #495057;
+  font-size: 14px;
+  margin-bottom: 5px;
+  padding-left: 10px;
+}
+
+/* No Data Section */
+.no-data-section {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.empty-state svg {
+  color: #f39c12;
+}
+
+.empty-state h3 {
+  color: #856404;
+  margin: 0;
+}
+
+.instructions {
+  text-align: left;
+  max-width: 600px;
+}
+
+.instructions h4 {
+  color: #856404;
+  margin-bottom: 15px;
+}
+
+.instruction-list {
+  color: #856404;
+  padding-left: 20px;
+}
+
+.instruction-list li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* Debug Section */
+.debug-section {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-top: 30px;
+  overflow: hidden;
+}
+
+.debug-header {
+  background: #e9ecef;
+  padding: 15px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.debug-header:hover {
+  background: #dee2e6;
+}
+
+.debug-content {
+  padding: 20px;
+}
+
+.debug-content h4 {
+  color: #495057;
+  margin: 15px 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.debug-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.debug-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.debug-key {
+  font-weight: 600;
+  color: #495057;
+}
+
+.debug-value.available {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.debug-value.unavailable {
+  color: #dc3545;
+}
+
+.debug-count {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #495057;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.debug-sheets {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.debug-sheet {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #495057;
+}
+
+.debug-no-sheets {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #545b62;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+/* Spinning Animation */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .status-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .generation-actions {
+    flex-direction: column;
+  }
+  
+  .btn-large {
+    width: 100%;
+  }
+  
+  .debug-status {
+    grid-template-columns: 1fr;
+  }
+}
