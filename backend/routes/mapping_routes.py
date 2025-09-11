@@ -3,10 +3,6 @@
 from flask import Blueprint, request, jsonify
 from services import mapping_service as svc
 from models.schema import *
-import logging  # <-- ADD THIS IMPORT
-
-# Get a logger instance
-logger = logging.getLogger(__name__)
 
 mapping_bp = Blueprint("mapping", __name__)
 
@@ -43,33 +39,23 @@ def get_exec_customers(name):
     customers = svc.get_exec_customers(name)
     return jsonify([{"code": c.code, "name": c.name} for c in customers])
 
-# ===============================================
-# === THIS IS THE FUNCTION THAT HAS BEEN FIXED ===
-# ===============================================
 @mapping_bp.route("/executives-with-counts", methods=["GET"])
 def get_executives_with_counts():
-    try:
-        execs = Executive.query.all()
-        result = []
+    execs = Executive.query.all()
+    result = []
 
-        for e in execs:
-            customer_count = Customer.query.filter_by(executive_id=e.id).count()
-            branch_count = BranchExecutiveMap.query.filter_by(executive_id=e.id).count()
+    for e in execs:
+        customer_count = Customer.query.filter_by(executive_id=e.id).count()
+        branch_count = BranchExecutiveMap.query.filter_by(executive_id=e.id).count()
 
-            result.append({
-                "name": e.name,
-                "code": e.code,
-                "customers": customer_count,
-                "branches": branch_count
-            })
+        result.append({
+            "name": e.name,
+            "code": e.code,
+            "customers": customer_count,
+            "branches": branch_count
+        })
 
-        return jsonify(result)
-    except Exception as e:
-        # If any error occurs, log it and return a safe, empty array.
-        logger.error(f"Error in /executives-with-counts: {str(e)}")
-        return jsonify([]) # This prevents the frontend from crashing.
-# ===============================================
-# ===============================================
+    return jsonify(result)
 
 @mapping_bp.route("/customers")
 def get_customers_by_executive():
@@ -187,3 +173,9 @@ def map_product_company():
 @mapping_bp.route("/export", methods=["GET"])
 def export_all():
     return jsonify(svc.export_all_mappings())
+
+@mapping_bp.route("/reset-mappings", methods=["POST"])
+def reset_mappings():
+    success, msg = svc.reset_all_mappings()
+    return jsonify({"success": success, "message": msg}), (200 if success else 500)
+
