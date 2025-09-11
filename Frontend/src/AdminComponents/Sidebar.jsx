@@ -1,7 +1,7 @@
 import React from "react";
 import api from "../api/axios";
 
-const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
+const Sidebar = ({ activeTab, setActiveTab, onLogout, onReset }) => {
   const tabs = [
     "Executives",
     "Branch & Region",
@@ -17,6 +17,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
       const { data } = await api.post("/reset-mappings");
       if (data.success) {
         alert(`✅ ${data.message}`);
+        if (onReset) onReset(); // 🔥 reset frontend states too
       } else {
         alert(`❌ Failed: ${data.message}`);
       }
