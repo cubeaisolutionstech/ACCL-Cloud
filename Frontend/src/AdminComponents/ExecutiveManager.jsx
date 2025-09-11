@@ -11,7 +11,7 @@ const ExecutiveManagement = () => {
   const [selectedRemove, setSelectedRemove] = useState("");
 
   const fetchExecutives = async () => {
-    const res = await axios.get("http://localhost:5000/api/executives-with-counts") // custom endpoint with customer + branch count
+    const res = await axios.get("http://localhost:5000/api/executives-with-counts");
     setExecutives(res.data);
   };
 
@@ -31,6 +31,17 @@ const ExecutiveManagement = () => {
     }
   };
 
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    if (newTab === "creation") {
+      fetchExecutives();
+    }
+  };
+
+  const handleDataUpdated = () => {
+    fetchExecutives();
+  };
+
   useEffect(() => {
     fetchExecutives();
   }, []);
@@ -40,13 +51,13 @@ const ExecutiveManagement = () => {
       <div className="flex gap-4 mb-4">
         <button
           className={`px-4 py-2 rounded ${activeTab === "creation" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-          onClick={() => setActiveTab("creation")}
+          onClick={() => handleTabChange("creation")}
         >
           Manual entry
         </button>
         <button
           className={`px-4 py-2 rounded ${activeTab === "customers" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-          onClick={() => setActiveTab("customers")}
+          onClick={() => handleTabChange("customers")}
         >
           File upload
         </button>
@@ -117,7 +128,7 @@ const ExecutiveManagement = () => {
       )}
 
       {activeTab === "customers" && (
-        <CustomerManager />
+        <CustomerManager onDataUpdated={handleDataUpdated} /> /* ✅ Fixed closing parenthesis */
       )}
     </div>
   );
