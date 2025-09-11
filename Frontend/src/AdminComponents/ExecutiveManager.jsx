@@ -42,13 +42,13 @@ const ExecutiveManagement = () => {
           className={`px-4 py-2 rounded ${activeTab === "creation" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
           onClick={() => setActiveTab("creation")}
         >
-          Executive Creation
+          Manual entry
         </button>
         <button
           className={`px-4 py-2 rounded ${activeTab === "customers" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
           onClick={() => setActiveTab("customers")}
         >
-          Customer Code Management
+          File upload
         </button>
       </div>
 
@@ -117,8 +117,8 @@ const ExecutiveManagement = () => {
       )}
 
       {activeTab === "customers" && (
-  <CustomerManager />
-)}
+        <CustomerManager />
+      )}
     </div>
   );
 };
