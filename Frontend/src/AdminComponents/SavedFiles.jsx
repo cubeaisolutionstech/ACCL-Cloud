@@ -60,7 +60,7 @@ const SavedFiles = () => {
                 </td>
                 <td className="border px-4 py-2">
                   <a
-                    href={`/${prefix}-files/${file.id}/download`}
+                    href={`http://localhost:5000/api/${prefix}-files/${file.id}/download`}
                     className="text-blue-600 hover:underline"
                     download
                   >
