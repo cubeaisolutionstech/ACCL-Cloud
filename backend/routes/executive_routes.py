@@ -643,6 +643,44 @@ def calculate_product_growth_route():
         logger.error(f"Error in calculate_product_growth route: {str(e)}", exc_info=True)
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
+
+from werkzeug.utils import secure_filename
+
+# Add this route to your executive_routes.py file
+@executive_bp.route('/upload', methods=['POST'])
+def upload_executive_file(): 
+    """Upload file for executive analysis"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Create uploads directory if it doesn't exist
+        upload_folder = 'uploads'
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Save file with secure filename
+        filename = secure_filename(file.filename)
+        
+        # Add timestamp to avoid conflicts
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+        unique_filename = f"{timestamp}{filename}"
+        
+        file_path = os.path.join(upload_folder, unique_filename)
+        file.save(file_path)
+        
+        return jsonify({
+            'message': 'File uploaded successfully',
+            'filename': unique_filename
+        })
+        
+    except Exception as e:
+        logger.error(f"Upload error: {str(e)}")
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+    
 # Update this function in your executive_routes.py
 
 @executive_bp.route('/generate_product_growth_ppt', methods=['POST'])
@@ -842,6 +880,8 @@ def create_title_slide(prs, title, logo_file=None):
     except Exception as e:
         logger.error(f"Error creating title slide: {e}")
         return None
+    
+
 
 def add_table_slide(prs, df, title, percent_cols=None):
     """Add table slide to PPT"""
