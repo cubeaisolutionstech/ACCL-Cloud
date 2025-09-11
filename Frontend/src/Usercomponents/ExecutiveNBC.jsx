@@ -8,6 +8,91 @@ const CustomerODAnalysis = () => {
  
  const [activeTab, setActiveTab] = useState('customers');
  
+ // Persistent state for both tabs
+ const [tabStates, setTabStates] = useState({
+   customers: {
+     // Sheet configurations
+     sheet: 'Sheet1',
+     sheets: [],
+     headerRow: 1,
+     
+     // Column configurations
+     columns: [],
+     columnSelections: {
+       date: '',
+       branch: '',
+       customer_id: '',
+       executive: ''
+     },
+     
+     // Options and filters
+     availableMonths: [],
+     branchOptions: [],
+     executiveOptions: [],
+     filters: {
+       selectedMonths: [],
+       selectedBranches: [],
+       selectedExecutives: []
+     },
+     
+     // State management
+     results: null,
+     loading: false,
+     downloadingPpt: false,
+     error: null
+   },
+   od_target: {
+     // File selection
+     fileChoice: 'os_feb',
+     currentFile: null,
+     
+     // Sheet configurations
+     sheet: 'Sheet1',
+     sheets: [],
+     headerRow: 1,
+     
+     // Column configurations
+     columns: [],
+     columnSelections: {
+       area: '',
+       net_value: '',
+       due_date: '',
+       executive: ''
+     },
+     
+     // Options and filters
+     yearOptions: [],
+     branchOptions: [],
+     executiveOptions: [],
+     filters: {
+       selectedYears: [],
+       selectedBranches: [],
+       selectedExecutives: [],
+       tillMonth: 'January'
+     },
+     
+     // State management
+     results: null,
+     loading: false,
+     downloadingPpt: false,
+     error: null
+   }
+ });
+
+ // Helper function to update tab state
+ const updateTabState = (tabName, updates) => {
+   setTabStates(prev => ({
+     ...prev,
+     [tabName]: {
+       ...prev[tabName],
+       ...updates
+     }
+   }));
+ };
+
+ // Helper function to get current tab state
+ const getCurrentTabState = () => tabStates[activeTab];
+ 
  return (
    <div className="p-6">
      <h2 className="text-2xl font-bold text-blue-800 mb-6">Customer & OD Analysis</h2>
@@ -38,46 +123,27 @@ const CustomerODAnalysis = () => {
      
      {/* Tab Content */}
      <div className="border-2 border-gray-200 rounded-lg p-6">
-       {activeTab === 'customers' && <BilledCustomersTab />}
-       {activeTab === 'od_target' && <ODTargetTab />}
+       {activeTab === 'customers' && (
+         <BilledCustomersTab 
+           tabState={tabStates.customers}
+           updateTabState={(updates) => updateTabState('customers', updates)}
+           selectedFiles={selectedFiles}
+         />
+       )}
+       {activeTab === 'od_target' && (
+         <ODTargetTab 
+           tabState={tabStates.od_target}
+           updateTabState={(updates) => updateTabState('od_target', updates)}
+           selectedFiles={selectedFiles}
+         />
+       )}
      </div>
    </div>
  );
 };
 
-// Billed Customers Tab Component - WITH CONSOLIDATION
-const BilledCustomersTab = () => {
- const { selectedFiles } = useExcelData();
- 
- // Sheet configurations
- const [sheet, setSheet] = useState('Sheet1');
- const [sheets, setSheets] = useState([]);
- const [headerRow, setHeaderRow] = useState(1);
- 
- // Column configurations
- const [columns, setColumns] = useState([]);
- const [columnSelections, setColumnSelections] = useState({
-   date: '',
-   branch: '',
-   customer_id: '',
-   executive: ''
- });
- 
- // Options and filters
- const [availableMonths, setAvailableMonths] = useState([]);
- const [branchOptions, setBranchOptions] = useState([]);
- const [executiveOptions, setExecutiveOptions] = useState([]);
- const [filters, setFilters] = useState({
-   selectedMonths: [],
-   selectedBranches: [],
-   selectedExecutives: []
- });
- 
- // State management
- const [results, setResults] = useState(null);
- const [loading, setLoading] = useState(false);
- const [downloadingPpt, setDownloadingPpt] = useState(false);
- const [error, setError] = useState(null);
+// Billed Customers Tab Component - WITH PERSISTENT STATE
+const BilledCustomersTab = ({ tabState, updateTabState, selectedFiles }) => {
  
  // Fetch available sheet names
  const fetchSheets = async () => {
@@ -86,14 +152,16 @@ const BilledCustomersTab = () => {
    try {
      const res = await axios.post('http://localhost:5000/api/branch/sheets', { filename: selectedFiles.salesFile });
      if (res.data && res.data.sheets) {
-       setSheets(res.data.sheets);
+       updateTabState({ sheets: res.data.sheets });
      } else {
-       setSheets([]);
+       updateTabState({ sheets: [] });
      }
    } catch (error) {
      console.error('Error fetching sheets:', error);
-     setError(`Failed to load sheet names: ${error.response?.data?.error || error.message}`);
-     setSheets([]);
+     updateTabState({ 
+       error: `Failed to load sheet names: ${error.response?.data?.error || error.message}`,
+       sheets: []
+     });
    }
  };
  
@@ -103,29 +171,31 @@ const BilledCustomersTab = () => {
  
  // Fetch columns and auto-map
  const fetchColumns = async () => {
-   if (!sheet) {
-     setError('Please select a sheet first');
+   if (!tabState.sheet) {
+     updateTabState({ error: 'Please select a sheet first' });
      return;
    }
    
-   setLoading(true);
-   setError(null);
+   updateTabState({ loading: true, error: null });
    
    try {
      // Step 1: Get columns
      const colRes = await axios.post('http://localhost:5000/api/branch/get_columns', {
        filename: selectedFiles.salesFile,
-       sheet_name: sheet,
-       header: headerRow
+       sheet_name: tabState.sheet,
+       header: tabState.headerRow
      });
      
      if (!colRes.data || !colRes.data.columns) {
-       setError('No columns found in the sheet');
-       setColumns([]);
+       updateTabState({ 
+         error: 'No columns found in the sheet',
+         columns: [],
+         loading: false
+       });
        return;
      }
      
-     setColumns(colRes.data.columns);
+     updateTabState({ columns: colRes.data.columns });
      
      // Step 2: Auto-map columns
      try {
@@ -134,31 +204,41 @@ const BilledCustomersTab = () => {
        });
        
        if (mapRes.data && mapRes.data.success && mapRes.data.mapping) {
-         setColumnSelections(mapRes.data.mapping);
+         updateTabState({ 
+           columnSelections: mapRes.data.mapping,
+           loading: false
+         });
          
          // Step 3: Auto-load options - WAIT for column selections to be set
          setTimeout(async () => {
            await loadFilterOptions(mapRes.data.mapping);
          }, 200);
        } else {
-         setError('Auto-mapping failed. Please map columns manually.');
+         updateTabState({ 
+           error: 'Auto-mapping failed. Please map columns manually.',
+           loading: false
+         });
        }
      } catch (mapError) {
-       setError('Auto-mapping failed. Please map columns manually.');
+       updateTabState({ 
+         error: 'Auto-mapping failed. Please map columns manually.',
+         loading: false
+       });
      }
      
    } catch (error) {
      console.error('Error fetching columns:', error);
-     setError(`Failed to load columns: ${error.response?.data?.error || error.message}`);
-     setColumns([]);
-   } finally {
-     setLoading(false);
+     updateTabState({ 
+       error: `Failed to load columns: ${error.response?.data?.error || error.message}`,
+       columns: [],
+       loading: false
+     });
    }
  };
  
  // Load filter options function
  const loadFilterOptions = async (mappings = null) => {
-   const mapping = mappings || columnSelections;
+   const mapping = mappings || tabState.columnSelections;
    
    // Validate mappings
    const requiredColumns = ['date', 'branch', 'customer_id', 'executive'];
@@ -175,21 +255,17 @@ const BilledCustomersTab = () => {
      });
      
      if (res.data && res.data.success) {
-       setAvailableMonths(res.data.available_months || []);
-       setBranchOptions(res.data.branches || []);
-       setExecutiveOptions(res.data.executives || []);
-       
-       // Set all options as selected by default
-       setFilters({
-         selectedMonths: res.data.available_months || [],
-         selectedBranches: res.data.branches || [],
-         selectedExecutives: res.data.executives || []
+       updateTabState({
+         availableMonths: res.data.available_months || [],
+         branchOptions: res.data.branches || [],
+         executiveOptions: res.data.executives || [],
+         filters: {
+           selectedMonths: res.data.available_months || [],
+           selectedBranches: res.data.branches || [],
+           selectedExecutives: res.data.executives || []
+         },
+         error: tabState.error && (tabState.error.includes('map columns') || tabState.error.includes('Auto-mapping')) ? null : tabState.error
        });
-       
-       // Clear any mapping-related errors
-       if (error && (error.includes('map columns') || error.includes('Auto-mapping'))) {
-         setError(null);
-       }
      }
    } catch (error) {
      console.error('Error loading filter options:', error);
@@ -198,17 +274,17 @@ const BilledCustomersTab = () => {
  
  // Watch for column selection changes and auto-load options
  useEffect(() => {
-   const hasAllColumns = columnSelections.date && columnSelections.branch && 
-                        columnSelections.customer_id && columnSelections.executive;
+   const hasAllColumns = tabState.columnSelections.date && tabState.columnSelections.branch && 
+                        tabState.columnSelections.customer_id && tabState.columnSelections.executive;
    
-   if (hasAllColumns && columns.length > 0) {
+   if (hasAllColumns && tabState.columns.length > 0) {
      const timer = setTimeout(() => {
        loadFilterOptions();
      }, 300);
      
      return () => clearTimeout(timer);
    }
- }, [columnSelections.date, columnSelections.branch, columnSelections.customer_id, columnSelections.executive]);
+ }, [tabState.columnSelections.date, tabState.columnSelections.branch, tabState.columnSelections.customer_id, tabState.columnSelections.executive]);
  
  // Function to add customer results to consolidated storage
  const addCustomerReportsToStorage = (resultsData) => {
@@ -236,63 +312,68 @@ const BilledCustomersTab = () => {
  // Handle generate report
  const handleGenerateReport = async () => {
    if (!selectedFiles.salesFile) {
-     setError('Please upload a sales file');
+     updateTabState({ error: 'Please upload a sales file' });
      return;
    }
    
-   if (!filters.selectedMonths.length) {
-     setError('Please select at least one month');
+   if (!tabState.filters.selectedMonths.length) {
+     updateTabState({ error: 'Please select at least one month' });
      return;
    }
    
-   setLoading(true);
-   setError(null);
+   updateTabState({ loading: true, error: null });
    
    try {
      const payload = {
        sales_file_path: `uploads/${selectedFiles.salesFile}`,
-       date_column: columnSelections.date,
-       branch_column: columnSelections.branch,
-       customer_id_column: columnSelections.customer_id,
-       executive_column: columnSelections.executive,
-       selected_months: filters.selectedMonths,
-       selected_branches: filters.selectedBranches,
-       selected_executives: filters.selectedExecutives
+       date_column: tabState.columnSelections.date,
+       branch_column: tabState.columnSelections.branch,
+       customer_id_column: tabState.columnSelections.customer_id,
+       executive_column: tabState.columnSelections.executive,
+       selected_months: tabState.filters.selectedMonths,
+       selected_branches: tabState.filters.selectedBranches,
+       selected_executives: tabState.filters.selectedExecutives
      };
      
      const res = await axios.post('http://localhost:5000/api/executive/calculate_customer_analysis', payload);
      
      if (res.data && res.data.success) {
-       setResults(res.data.results);
-       setError(null);
+       updateTabState({ 
+         results: res.data.results,
+         error: null,
+         loading: false
+       });
        
-       // 🎯 ADD TO CONSOLIDATED REPORTS - Just like Streamlit!
+       // 🎯 ADD TO CONSOLIDATED REPORTS
        addCustomerReportsToStorage(res.data.results);
        
      } else {
-       setError(res.data?.error || 'Failed to generate report');
+       updateTabState({ 
+         error: res.data?.error || 'Failed to generate report',
+         loading: false
+       });
      }
    } catch (error) {
      console.error('Error generating report:', error);
-     setError(`Error generating report: ${error.response?.data?.error || error.message}`);
-   } finally {
-     setLoading(false);
+     updateTabState({ 
+       error: `Error generating report: ${error.response?.data?.error || error.message}`,
+       loading: false
+     });
    }
  };
  
  // Handle download PPT
  const handleDownloadPpt = async (financialYear) => {
-   if (!results || !results[financialYear]) {
-     setError('No results available for PPT generation');
+   if (!tabState.results || !tabState.results[financialYear]) {
+     updateTabState({ error: 'No results available for PPT generation' });
      return;
    }
    
-   setDownloadingPpt(true);
-   setError(null);
+   updateTabState({ downloadingPpt: true, error: null });
    
    try {
      const payload = {
-       results_data: { results: results },
+       results_data: { results: tabState.results },
        title: `NUMBER OF BILLED CUSTOMERS - FY ${financialYear}`,
        logo_file: null
      };
@@ -319,10 +400,30 @@ const BilledCustomersTab = () => {
      
    } catch (error) {
      console.error('Error downloading PPT:', error);
-     setError('Failed to download PowerPoint presentation');
+     updateTabState({ error: 'Failed to download PowerPoint presentation' });
    } finally {
-     setDownloadingPpt(false);
+     updateTabState({ downloadingPpt: false });
    }
+ };
+
+ // Handle column selection change
+ const handleColumnChange = (columnType, value) => {
+   updateTabState({
+     columnSelections: {
+       ...tabState.columnSelections,
+       [columnType]: value
+     }
+   });
+ };
+
+ // Handle filter change
+ const handleFilterChange = (filterType, value) => {
+   updateTabState({
+     filters: {
+       ...tabState.filters,
+       [filterType]: value
+     }
+   });
  };
  
  if (!selectedFiles.salesFile) {
@@ -335,9 +436,9 @@ const BilledCustomersTab = () => {
  
  return (
    <div>
-     {error && (
+     {tabState.error && (
        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-         {error}
+         {tabState.error}
        </div>
      )}
      
@@ -349,12 +450,12 @@ const BilledCustomersTab = () => {
            <label className="block font-semibold mb-2">Select Sheet</label>
            <select 
              className="w-full p-2 border border-gray-300 rounded" 
-             value={sheet} 
-             onChange={e => setSheet(e.target.value)}
-             disabled={loading}
+             value={tabState.sheet} 
+             onChange={e => updateTabState({ sheet: e.target.value })}
+             disabled={tabState.loading}
            >
              <option value="">Select Sheet</option>
-             {sheets.map(sheetName => (
+             {tabState.sheets.map(sheetName => (
                <option key={sheetName} value={sheetName}>{sheetName}</option>
              ))}
            </select>
@@ -366,23 +467,23 @@ const BilledCustomersTab = () => {
              className="w-full p-2 border border-gray-300 rounded" 
              min={1} 
              max={10}
-             value={headerRow}
-             onChange={e => setHeaderRow(Number(e.target.value))}
-             disabled={loading}
+             value={tabState.headerRow}
+             onChange={e => updateTabState({ headerRow: Number(e.target.value) })}
+             disabled={tabState.loading}
            />
          </div>
        </div>
        <button
          className="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
          onClick={fetchColumns}
-         disabled={!sheet || loading}
+         disabled={!tabState.sheet || tabState.loading}
        >
-         {loading ? 'Loading...' : 'Load Columns & Auto-Map'}
+         {tabState.loading ? 'Loading...' : 'Load Columns & Auto-Map'}
        </button>
      </div>
      
      {/* Column Mapping */}
-     {columns.length > 0 && (
+     {tabState.columns.length > 0 && (
        <div className="bg-white p-4 rounded-lg shadow mb-6">
          <h3 className="text-lg font-semibold text-blue-700 mb-4">Column Mapping</h3>
          <div className="grid grid-cols-2 gap-4">
@@ -390,11 +491,11 @@ const BilledCustomersTab = () => {
              <label className="block font-medium mb-1">Date Column *</label>
              <select
                className="w-full p-2 border border-gray-300 rounded"
-               value={columnSelections.date || ''}
-               onChange={(e) => setColumnSelections(prev => ({...prev, date: e.target.value}))}
+               value={tabState.columnSelections.date || ''}
+               onChange={(e) => handleColumnChange('date', e.target.value)}
              >
                <option value="">Select Column</option>
-               {columns.map(col => (
+               {tabState.columns.map(col => (
                  <option key={col} value={col}>{col}</option>
                ))}
              </select>
@@ -403,11 +504,11 @@ const BilledCustomersTab = () => {
              <label className="block font-medium mb-1">Branch Column *</label>
              <select
                className="w-full p-2 border border-gray-300 rounded"
-               value={columnSelections.branch || ''}
-               onChange={(e) => setColumnSelections(prev => ({...prev, branch: e.target.value}))}
+               value={tabState.columnSelections.branch || ''}
+               onChange={(e) => handleColumnChange('branch', e.target.value)}
              >
                <option value="">Select Column</option>
-               {columns.map(col => (
+               {tabState.columns.map(col => (
                  <option key={col} value={col}>{col}</option>
                ))}
              </select>
@@ -416,11 +517,11 @@ const BilledCustomersTab = () => {
              <label className="block font-medium mb-1">Customer ID Column *</label>
              <select
                className="w-full p-2 border border-gray-300 rounded"
-               value={columnSelections.customer_id || ''}
-               onChange={(e) => setColumnSelections(prev => ({...prev, customer_id: e.target.value}))}
+               value={tabState.columnSelections.customer_id || ''}
+               onChange={(e) => handleColumnChange('customer_id', e.target.value)}
              >
                <option value="">Select Column</option>
-               {columns.map(col => (
+               {tabState.columns.map(col => (
                  <option key={col} value={col}>{col}</option>
                ))}
              </select>
@@ -429,11 +530,11 @@ const BilledCustomersTab = () => {
              <label className="block font-medium mb-1">Executive Column *</label>
              <select
                className="w-full p-2 border border-gray-300 rounded"
-               value={columnSelections.executive || ''}
-               onChange={(e) => setColumnSelections(prev => ({...prev, executive: e.target.value}))}
+               value={tabState.columnSelections.executive || ''}
+               onChange={(e) => handleColumnChange('executive', e.target.value)}
              >
                <option value="">Select Column</option>
-               {columns.map(col => (
+               {tabState.columns.map(col => (
                  <option key={col} value={col}>{col}</option>
                ))}
              </select>
@@ -443,53 +544,47 @@ const BilledCustomersTab = () => {
      )}
      
      {/* Filters */}
-     {(availableMonths.length > 0 || branchOptions.length > 0 || executiveOptions.length > 0) && (
+     {(tabState.availableMonths.length > 0 || tabState.branchOptions.length > 0 || tabState.executiveOptions.length > 0) && (
        <div className="bg-white p-4 rounded-lg shadow mb-6">
          <h3 className="text-lg font-semibold text-blue-700 mb-4">Filter Options</h3>
          
          {/* Months Filter */}
-         {availableMonths.length > 0 && (
+         {tabState.availableMonths.length > 0 && (
            <div className="mb-4">
-             <label className="block font-semibold mb-2">
-               Select Months ({filters.selectedMonths.length} of {availableMonths.length})
+             <label className="block font-semibold mb-3">
+               Select Months ({tabState.filters.selectedMonths.length} of {tabState.availableMonths.length})
              </label>
-             <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-               <label className="flex items-center mb-2">
+             <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+               <label className="flex items-center mb-3">
                  <input
                    type="checkbox"
-                   checked={filters.selectedMonths.length === availableMonths.length}
+                   checked={tabState.filters.selectedMonths.length === tabState.availableMonths.length}
                    onChange={(e) => {
                      if (e.target.checked) {
-                       setFilters(prev => ({...prev, selectedMonths: availableMonths}));
+                       handleFilterChange('selectedMonths', tabState.availableMonths);
                      } else {
-                       setFilters(prev => ({...prev, selectedMonths: []}));
+                       handleFilterChange('selectedMonths', []);
                      }
                    }}
-                   className="mr-2"
+                   className="mr-3"
                  />
-                 <span className="font-medium text-sm">Select All</span>
+                 <span className="font-medium text-xm">Select All</span>
                </label>
-               {availableMonths.map(month => (
-                 <label key={month} className="flex items-center mb-1">
+               {tabState.availableMonths.map(month => (
+                 <label key={month} className="flex items-center mb-2">
                    <input
                      type="checkbox"
-                     checked={filters.selectedMonths.includes(month)}
+                     checked={tabState.filters.selectedMonths.includes(month)}
                      onChange={(e) => {
                        if (e.target.checked) {
-                         setFilters(prev => ({
-                           ...prev,
-                           selectedMonths: [...prev.selectedMonths, month]
-                         }));
+                         handleFilterChange('selectedMonths', [...tabState.filters.selectedMonths, month]);
                        } else {
-                         setFilters(prev => ({
-                           ...prev,
-                           selectedMonths: prev.selectedMonths.filter(m => m !== month)
-                         }));
+                         handleFilterChange('selectedMonths', tabState.filters.selectedMonths.filter(m => m !== month));
                        }
                      }}
-                     className="mr-2"
+                     className="mr-3"
                    />
-                   <span className="text-xs">{month}</span>
+                   <span className="text-xm">{month}</span>
                  </label>
                ))}
              </div>
@@ -498,48 +593,42 @@ const BilledCustomersTab = () => {
          
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            {/* Branches Filter */}
-           {branchOptions.length > 0 && (
+           {tabState.branchOptions.length > 0 && (
              <div>
-               <label className="block font-semibold mb-2">
-                 Branches ({filters.selectedBranches.length} of {branchOptions.length})
+               <label className="block font-semibold mb-3">
+                 Branches ({tabState.filters.selectedBranches.length} of {tabState.branchOptions.length})
                </label>
                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                 <label className="flex items-center mb-2">
+                 <label className="flex items-center mb-3">
                    <input
                      type="checkbox"
-                     checked={filters.selectedBranches.length === branchOptions.length}
+                     checked={tabState.filters.selectedBranches.length === tabState.branchOptions.length}
                      onChange={(e) => {
                        if (e.target.checked) {
-                         setFilters(prev => ({...prev, selectedBranches: branchOptions}));
+                         handleFilterChange('selectedBranches', tabState.branchOptions);
                        } else {
-                         setFilters(prev => ({...prev, selectedBranches: []}));
+                         handleFilterChange('selectedBranches', []);
                        }
                      }}
-                     className="mr-2"
+                     className="mr-3"
                    />
-                   <span className="font-medium text-sm">Select All</span>
+                   <span className="font-medium text-xm">Select All</span>
                  </label>
-                 {branchOptions.map(branch => (
-                   <label key={branch} className="flex items-center mb-1">
+                 {tabState.branchOptions.map(branch => (
+                   <label key={branch} className="flex items-center mb-2">
                      <input
                        type="checkbox"
-                       checked={filters.selectedBranches.includes(branch)}
+                       checked={tabState.filters.selectedBranches.includes(branch)}
                        onChange={(e) => {
                          if (e.target.checked) {
-                           setFilters(prev => ({
-                             ...prev,
-                             selectedBranches: [...prev.selectedBranches, branch]
-                           }));
+                           handleFilterChange('selectedBranches', [...tabState.filters.selectedBranches, branch]);
                          } else {
-                           setFilters(prev => ({
-                             ...prev,
-                             selectedBranches: prev.selectedBranches.filter(b => b !== branch)
-                           }));
+                           handleFilterChange('selectedBranches', tabState.filters.selectedBranches.filter(b => b !== branch));
                          }
                        }}
-                       className="mr-2"
+                       className="mr-3"
                      />
-                     <span className="text-xs">{branch}</span>
+                     <span className="text-xm">{branch}</span>
                    </label>
                  ))}
                </div>
@@ -547,48 +636,42 @@ const BilledCustomersTab = () => {
            )}
            
            {/* Executives Filter */}
-           {executiveOptions.length > 0 && (
+           {tabState.executiveOptions.length > 0 && (
              <div>
-               <label className="block font-semibold mb-2">
-                 Executives ({filters.selectedExecutives.length} of {executiveOptions.length})
+               <label className="block font-semibold mb-3">
+                 Executives ({tabState.filters.selectedExecutives.length} of {tabState.executiveOptions.length})
                </label>
-               <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                 <label className="flex items-center mb-2">
+               <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+                 <label className="flex items-center mb-3">
                    <input
                      type="checkbox"
-                     checked={filters.selectedExecutives.length === executiveOptions.length}
+                     checked={tabState.filters.selectedExecutives.length === tabState.executiveOptions.length}
                      onChange={(e) => {
                        if (e.target.checked) {
-                         setFilters(prev => ({...prev, selectedExecutives: executiveOptions}));
+                         handleFilterChange('selectedExecutives', tabState.executiveOptions);
                        } else {
-                         setFilters(prev => ({...prev, selectedExecutives: []}));
+                         handleFilterChange('selectedExecutives', []);
                        }
                      }}
-                     className="mr-2"
+                     className="mr-3"
                    />
-                   <span className="font-medium text-sm">Select All</span>
+                   <span className="font-medium text-xm">Select All</span>
                  </label>
-                 {executiveOptions.map(exec => (
-                   <label key={exec} className="flex items-center mb-1">
+                 {tabState.executiveOptions.map(exec => (
+                   <label key={exec} className="flex items-center mb-2">
                      <input
                        type="checkbox"
-                       checked={filters.selectedExecutives.includes(exec)}
+                       checked={tabState.filters.selectedExecutives.includes(exec)}
                        onChange={(e) => {
                          if (e.target.checked) {
-                           setFilters(prev => ({
-                             ...prev,
-                             selectedExecutives: [...prev.selectedExecutives, exec]
-                           }));
+                           handleFilterChange('selectedExecutives', [...tabState.filters.selectedExecutives, exec]);
                          } else {
-                           setFilters(prev => ({
-                             ...prev,
-                             selectedExecutives: prev.selectedExecutives.filter(e => e !== exec)
-                           }));
+                           handleFilterChange('selectedExecutives', tabState.filters.selectedExecutives.filter(e => e !== exec));
                          }
                        }}
-                       className="mr-2"
+                       className="mr-3"
                      />
-                     <span className="text-xs">{exec}</span>
+                     <span className="text-xm">{exec}</span>
                    </label>
                  ))}
                </div>
@@ -602,15 +685,15 @@ const BilledCustomersTab = () => {
      <div className="text-center mb-6">
        <button
          onClick={handleGenerateReport}
-         disabled={loading || !columns.length || !filters.selectedMonths.length}
-         className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+         disabled={tabState.loading || !tabState.columns.length || !tabState.filters.selectedMonths.length}
+         className="bg-red-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
        >
-         {loading ? 'Generating...' : 'Generate Report'}
+         {tabState.loading ? 'Generating...' : 'Generate Report'}
        </button>
      </div>
      
      {/* Results */}
-     {results && Object.keys(results).length > 0 && (
+     {tabState.results && Object.keys(tabState.results).length > 0 && (
        <div className="bg-white p-6 rounded-lg shadow">
          <h3 className="text-xl font-bold text-blue-700 mb-4">Customer Analysis Results</h3>
          
@@ -619,16 +702,16 @@ const BilledCustomersTab = () => {
            ✅ Results calculated and automatically added to consolidated reports!
          </div>
          
-         {Object.entries(results).map(([financialYear, data]) => (
+         {Object.entries(tabState.results).map(([financialYear, data]) => (
            <div key={financialYear} className="mb-8">
              <div className="flex justify-between items-center mb-4">
                <h4 className="text-lg font-semibold text-gray-800">Financial Year: {financialYear}</h4>
                <button
                  onClick={() => handleDownloadPpt(financialYear)}
-                 disabled={downloadingPpt}
-                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:bg-gray-400"
+                 disabled={tabState.downloadingPpt}
+                 className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400"
                >
-                 {downloadingPpt ? 'Generating PPT...' : 'Download PPT'}
+                 {tabState.downloadingPpt ? 'Generating PPT...' : 'Download PPT'}
                </button>
              </div>
              
@@ -674,201 +757,182 @@ const BilledCustomersTab = () => {
  );
 };
 
-// OD Target Tab Component - WITH CONSOLIDATION
-const ODTargetTab = () => {
- const { selectedFiles } = useExcelData();
- 
- // File selection
- const [fileChoice, setFileChoice] = useState('os_feb'); // Default to current month
- const [currentFile, setCurrentFile] = useState(null);
- 
- // Sheet configurations
- const [sheet, setSheet] = useState('Sheet1');
- const [sheets, setSheets] = useState([]);
- const [headerRow, setHeaderRow] = useState(1);
- 
- // Column configurations
- const [columns, setColumns] = useState([]);
- const [columnSelections, setColumnSelections] = useState({
-   area: '',
-   net_value: '',
-   due_date: '',
-   executive: ''
- });
- 
- // Options and filters
- const [yearOptions, setYearOptions] = useState([]);
- const [branchOptions, setBranchOptions] = useState([]);
- const [executiveOptions, setExecutiveOptions] = useState([]);
- const [filters, setFilters] = useState({
-   selectedYears: [],
-   selectedBranches: [],
-   selectedExecutives: [],
-   tillMonth: 'January'
- });
- 
- // State management
- const [results, setResults] = useState(null);
- const [loading, setLoading] = useState(false);
- const [downloadingPpt, setDownloadingPpt] = useState(false);
- const [error, setError] = useState(null);
+// OD Target Tab Component - WITH PERSISTENT STATE
+const ODTargetTab = ({ tabState, updateTabState, selectedFiles }) => {
+ const monthOptions = [
+   'January', 'February', 'March', 'April', 'May', 'June',
+   'July', 'August', 'September', 'October', 'November', 'December'
+ ];
  
  // Update current file when choice or files change
  useEffect(() => {
-   // Reset states when changing files
-   setError(null);
-   setSheet('');
-   setSheets([]);
-   setColumns([]);
-   setColumnSelections({
-     area: '',
-     net_value: '',
-     due_date: '',
-     executive: ''
+   // Reset some states when changing files
+   updateTabState({
+     error: null,
+     sheet: '',
+     sheets: [],
+     columns: [],
+     columnSelections: {
+       area: '',
+       net_value: '',
+       due_date: '',
+       executive: ''
+     }
    });
    
    // Determine current file based on choice
    let newCurrentFile = null;
-   if (fileChoice === 'os_jan' && selectedFiles.osPrevFile) {
+   if (tabState.fileChoice === 'os_jan' && selectedFiles.osPrevFile) {
      newCurrentFile = selectedFiles.osPrevFile;
-   } else if (fileChoice === 'os_feb' && selectedFiles.osCurrFile) {
+   } else if (tabState.fileChoice === 'os_feb' && selectedFiles.osCurrFile) {
      newCurrentFile = selectedFiles.osCurrFile;
    }
    
-   setCurrentFile(newCurrentFile);
- }, [fileChoice, selectedFiles.osPrevFile, selectedFiles.osCurrFile]);
+   updateTabState({ currentFile: newCurrentFile });
+ }, [tabState.fileChoice, selectedFiles.osPrevFile, selectedFiles.osCurrFile]);
  
  // Fetch sheets when file changes
  useEffect(() => {
-   if (currentFile) {
+   if (tabState.currentFile) {
      fetchSheets();
    } else {
-     setSheets([]);
+     updateTabState({ sheets: [] });
    }
- }, [currentFile]);
+ }, [tabState.currentFile]);
  
  const fetchSheets = async () => {
-   if (!currentFile) return;
+   if (!tabState.currentFile) return;
    
-   setLoading(true);
-   setError(null);
+   updateTabState({ loading: true, error: null });
    
    try {
      const res = await axios.post('http://localhost:5000/api/branch/sheets', { 
-       filename: currentFile 
+       filename: tabState.currentFile 
      });
      
      if (res.data && res.data.sheets && Array.isArray(res.data.sheets)) {
-       setSheets(res.data.sheets);
-       if (res.data.sheets.includes('Sheet1')) {
-         setSheet('Sheet1');
-       } else if (res.data.sheets.length > 0) {
-         setSheet(res.data.sheets[0]); // Set first sheet as default
-       }  
+       const newSheet = res.data.sheets.includes('Sheet1') ? 'Sheet1' : res.data.sheets[0] || '';
+       updateTabState({ 
+         sheets: res.data.sheets,
+         sheet: newSheet,
+         loading: false
+       });
      } else {
-       setError('No sheets found in the file');
-       setSheets([]);
+       updateTabState({ 
+         error: 'No sheets found in the file',
+         sheets: [],
+         loading: false
+       });
      }
    } catch (error) {
      console.error('Error fetching sheets:', error);
      const errorMsg = error.response?.data?.error || error.message;
-     setError(`Failed to load sheet names: ${errorMsg}`);
-     setSheets([]);
-   } finally {
-     setLoading(false);
+     updateTabState({ 
+       error: `Failed to load sheet names: ${errorMsg}`,
+       sheets: [],
+       loading: false
+     });
    }
  };
  
  // Fetch columns and auto-map
  const fetchColumns = async () => {
-   if (!sheet || !currentFile) {
-     setError('Please select a sheet first');
+   if (!tabState.sheet || !tabState.currentFile) {
+     updateTabState({ error: 'Please select a sheet first' });
      return;
    }
    
-   setLoading(true);
-   setError(null);
+   updateTabState({ loading: true, error: null });
    
    try {
      // Step 1: Get columns
      const colRes = await axios.post('http://localhost:5000/api/branch/get_columns', {
-       filename: currentFile,
-       sheet_name: sheet,
-       header: headerRow
+       filename: tabState.currentFile,
+       sheet_name: tabState.sheet,
+       header: tabState.headerRow
      });
      
      if (!colRes.data || !colRes.data.columns || !Array.isArray(colRes.data.columns)) {
-       setError('No columns found in the sheet');
-       setColumns([]);
+       updateTabState({ 
+         error: 'No columns found in the sheet',
+         columns: [],
+         loading: false
+       });
        return;
      }
      
-     setColumns(colRes.data.columns);
+     updateTabState({ columns: colRes.data.columns });
      
      // Step 2: Auto-map columns
      try {
        const mapRes = await axios.post('http://localhost:5000/api/executive/od_target_auto_map_columns', {
-         os_file_path: `uploads/${currentFile}`
+         os_file_path: `uploads/${tabState.currentFile}`
        });
        
        if (mapRes.data && mapRes.data.success && mapRes.data.mapping) {
-         setColumnSelections(mapRes.data.mapping);
+         updateTabState({ 
+           columnSelections: mapRes.data.mapping,
+           loading: false
+         });
          
          // Step 3: Auto-load options with delay
          setTimeout(async () => {
            await loadFilterOptions(mapRes.data.mapping);
          }, 200);
        } else {
-         setError('Auto-mapping failed. Please map columns manually.');
+         updateTabState({ 
+           error: 'Auto-mapping failed. Please map columns manually.',
+           loading: false
+         });
        }
      } catch (mapError) {
-       setError('Auto-mapping failed. Please map columns manually.');
+       updateTabState({ 
+         error: 'Auto-mapping failed. Please map columns manually.',
+         loading: false
+       });
      }
    } catch (error) {
      console.error('Error fetching columns:', error);
      const errorMsg = error.response?.data?.error || error.message;
-     setError(`Failed to load columns: ${errorMsg}`);
-     setColumns([]);
-   } finally {
-     setLoading(false);
+     updateTabState({ 
+       error: `Failed to load columns: ${errorMsg}`,
+       columns: [],
+       loading: false
+     });
    }
  };
  
  // Load filter options function
  const loadFilterOptions = async (mappings = null) => {
-   const mapping = mappings || columnSelections;
+   const mapping = mappings || tabState.columnSelections;
    
    // Validate mappings
    const requiredColumns = ['due_date', 'area', 'executive'];
    const missingColumns = requiredColumns.filter(col => !mapping[col]);
    
-   if (missingColumns.length > 0 || !currentFile) {
+   if (missingColumns.length > 0 || !tabState.currentFile) {
      console.warn('Missing required columns or file:', missingColumns);
      return;
    }
    
    try {
      const res = await axios.post('http://localhost:5000/api/executive/od_target_get_options', {
-       os_file_path: `uploads/${currentFile}`
+       os_file_path: `uploads/${tabState.currentFile}`
      });
      
      if (res.data && res.data.success) {
-       setYearOptions(res.data.years || []);
-       setBranchOptions(res.data.branches || []);
-       setExecutiveOptions(res.data.executives || []);
-       
-       // Set all options as selected by default
-       setFilters(prev => ({
-         ...prev,
-         selectedYears: res.data.years || [],
-         selectedBranches: res.data.branches || [],
-         selectedExecutives: res.data.executives || []
-       }));
-       
-       // Clear mapping-related errors
-       if (error && (error.includes('map columns') || error.includes('Auto-mapping'))) {
-         setError(null);
-       }
+       updateTabState({
+         yearOptions: res.data.years || [],
+         branchOptions: res.data.branches || [],
+         executiveOptions: res.data.executives || [],
+         filters: {
+           ...tabState.filters,
+           selectedYears: res.data.years || [],
+           selectedBranches: res.data.branches || [],
+           selectedExecutives: res.data.executives || []
+         },
+         error: tabState.error && (tabState.error.includes('map columns') || tabState.error.includes('Auto-mapping')) ? null : tabState.error
+       });
      }
    } catch (error) {
      console.error('Error loading filter options:', error);
@@ -877,17 +941,17 @@ const ODTargetTab = () => {
  
  // Watch for column selection changes and auto-load options
  useEffect(() => {
-   const hasAllColumns = columnSelections.area && columnSelections.net_value && 
-                        columnSelections.due_date && columnSelections.executive;
+   const hasAllColumns = tabState.columnSelections.area && tabState.columnSelections.net_value && 
+                        tabState.columnSelections.due_date && tabState.columnSelections.executive;
    
-   if (hasAllColumns && columns.length > 0 && currentFile) {
+   if (hasAllColumns && tabState.columns.length > 0 && tabState.currentFile) {
      const timer = setTimeout(() => {
        loadFilterOptions();
      }, 300);
      
      return () => clearTimeout(timer);
    }
- }, [columnSelections.area, columnSelections.net_value, columnSelections.due_date, columnSelections.executive]);
+ }, [tabState.columnSelections.area, tabState.columnSelections.net_value, tabState.columnSelections.due_date, tabState.columnSelections.executive]);
  
  // Function to add OD target results to consolidated storage
  const addODTargetReportsToStorage = (resultsData) => {
@@ -895,7 +959,7 @@ const ODTargetTab = () => {
      const odTargetReports = [{
        df: resultsData.data || [],
        title: `OD Target - ${resultsData.end_date || 'All Periods'}`,
-       percent_cols: [] // No percentage columns for OD target reports
+       percent_cols: []
      }];
 
      if (odTargetReports.length > 0) {
@@ -909,68 +973,73 @@ const ODTargetTab = () => {
 
  // Handle generate report
  const handleGenerateReport = async () => {
-   if (!currentFile) {
-     setError('Please select an OS file');
+   if (!tabState.currentFile) {
+     updateTabState({ error: 'Please select an OS file' });
      return;
    }
    
-   if (!filters.selectedYears.length || !filters.tillMonth) {
-     setError('Please select at least one year and one month');
+   if (!tabState.filters.selectedYears.length || !tabState.filters.tillMonth) {
+     updateTabState({ error: 'Please select at least one year and one month' });
      return;
    }
    
-   setLoading(true);
-   setError(null);
+   updateTabState({ loading: true, error: null });
    
    try {
      const payload = {
-       os_file_path: `uploads/${currentFile}`,
-       area_column: columnSelections.area,
-       net_value_column: columnSelections.net_value,
-       due_date_column: columnSelections.due_date,
-       executive_column: columnSelections.executive,
-       selected_branches: filters.selectedBranches,
-       selected_years: filters.selectedYears,
-       till_month: filters.tillMonth,
-       selected_executives: filters.selectedExecutives
+       os_file_path: `uploads/${tabState.currentFile}`,
+       area_column: tabState.columnSelections.area,
+       net_value_column: tabState.columnSelections.net_value,
+       due_date_column: tabState.columnSelections.due_date,
+       executive_column: tabState.columnSelections.executive,
+       selected_branches: tabState.filters.selectedBranches,
+       selected_years: tabState.filters.selectedYears,
+       till_month: tabState.filters.tillMonth,
+       selected_executives: tabState.filters.selectedExecutives
      };
      
      const res = await axios.post('http://localhost:5000/api/executive/calculate_od_target', payload);
      
      if (res.data && res.data.success) {
-       setResults(res.data);
-       setError(null);
+       updateTabState({ 
+         results: res.data,
+         error: null,
+         loading: false
+       });
        
-       // 🎯 ADD TO CONSOLIDATED REPORTS - Just like Streamlit!
+       // ADD TO CONSOLIDATED REPORTS
        addODTargetReportsToStorage(res.data);
        
      } else {
-       setError(res.data?.error || 'Failed to generate report');
+       updateTabState({ 
+         error: res.data?.error || 'Failed to generate report',
+         loading: false
+       });
      }
    } catch (error) {
      console.error('Error generating report:', error);
      const errorMsg = error.response?.data?.error || error.message;
-     setError(`Error generating report: ${errorMsg}`);
-   } finally {
-     setLoading(false);
+     updateTabState({ 
+       error: `Error generating report: ${errorMsg}`,
+       loading: false
+     });
    }
  };
  
  // Handle download PPT
  const handleDownloadPpt = async () => {
-   if (!results) {
-     setError('No results available for PPT generation');
+   if (!tabState.results) {
+     updateTabState({ error: 'No results available for PPT generation' });
      return;
    }
    
-   setDownloadingPpt(true);
-   setError(null);
+   updateTabState({ downloadingPpt: true, error: null });
    
    try {
-     const title = `OD Target - ${results.end_date || 'All Periods'}`;
+     const title = `OD Target - ${tabState.results.end_date || 'All Periods'}`;
      
      const payload = {
-       results_data: results,
+       results_data: tabState.results,
        title: title,
        logo_file: null
      };
@@ -989,7 +1058,7 @@ const ODTargetTab = () => {
      const url = window.URL.createObjectURL(blob);
      const link = document.createElement('a');
      link.href = url;
-     link.download = `OD_Target_${results.end_date || 'Report'}.pptx`;
+     link.download = `OD_Target_${tabState.results.end_date || 'Report'}.pptx`;
      document.body.appendChild(link);
      link.click();
      link.remove();
@@ -997,22 +1066,37 @@ const ODTargetTab = () => {
      
    } catch (error) {
      console.error('Error downloading PPT:', error);
-     setError('Failed to download PowerPoint presentation');
+     updateTabState({ error: 'Failed to download PowerPoint presentation' });
    } finally {
-     setDownloadingPpt(false);
+     updateTabState({ downloadingPpt: false });
    }
  };
- 
- const monthOptions = [
-   'January', 'February', 'March', 'April', 'May', 'June',
-   'July', 'August', 'September', 'October', 'November', 'December'
- ];
+
+ // Handle column selection change
+ const handleColumnChange = (columnType, value) => {
+   updateTabState({
+     columnSelections: {
+       ...tabState.columnSelections,
+       [columnType]: value
+     }
+   });
+ };
+
+ // Handle filter change
+ const handleFilterChange = (filterType, value) => {
+   updateTabState({
+     filters: {
+       ...tabState.filters,
+       [filterType]: value
+     }
+   });
+ };
  
  return (
    <div>
-     {error && (
+     {tabState.error && (
        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-         {error}
+         {tabState.error}
        </div>
      )}
      
@@ -1024,8 +1108,8 @@ const ODTargetTab = () => {
            <input
              type="radio"
              value="os_jan"
-             checked={fileChoice === 'os_jan'}
-             onChange={(e) => setFileChoice(e.target.value)}
+             checked={tabState.fileChoice === 'os_jan'}
+             onChange={(e) => updateTabState({ fileChoice: e.target.value })}
              className="mr-2"
            />
            <span className="text-sm">
@@ -1041,8 +1125,8 @@ const ODTargetTab = () => {
            <input
              type="radio"
              value="os_feb"
-             checked={fileChoice === 'os_feb'}
-             onChange={(e) => setFileChoice(e.target.value)}
+             checked={tabState.fileChoice === 'os_feb'}
+             onChange={(e) => updateTabState({ fileChoice: e.target.value })}
              className="mr-2"
            />
            <span className="text-sm">
@@ -1057,15 +1141,15 @@ const ODTargetTab = () => {
        </div>
        
        <div className="text-sm text-gray-600">
-         <strong>Selected file:</strong> {currentFile || 'None available'}
+         <strong>Selected file:</strong> {tabState.currentFile || 'None available'}
        </div>
      </div>
      
-     {!currentFile ? (
+     {!tabState.currentFile ? (
        <div className="text-center py-8">
          <p className="text-gray-600">⚠️ No OS file selected or uploaded</p>
          <p className="text-sm text-gray-500 mt-2">
-           Please upload the {fileChoice === 'os_jan' ? 'OS-Previous Month' : 'OS-Current Month'} file first.
+           Please upload the {tabState.fileChoice === 'os_jan' ? 'OS-Previous Month' : 'OS-Current Month'} file first.
          </p>
        </div>
      ) : (
@@ -1078,12 +1162,12 @@ const ODTargetTab = () => {
                <label className="block font-semibold mb-2">Select Sheet</label>
                <select 
                  className="w-full p-2 border border-gray-300 rounded" 
-                 value={sheet} 
-                 onChange={e => setSheet(e.target.value)}
-                 disabled={loading}
+                 value={tabState.sheet} 
+                 onChange={e => updateTabState({ sheet: e.target.value })}
+                 disabled={tabState.loading}
                >
                  <option value="">Select Sheet</option>
-                 {sheets.map(sheetName => (
+                 {tabState.sheets.map(sheetName => (
                    <option key={sheetName} value={sheetName}>{sheetName}</option>
                  ))}
                </select>
@@ -1095,23 +1179,23 @@ const ODTargetTab = () => {
                  className="w-full p-2 border border-gray-300 rounded" 
                  min={1} 
                  max={10}
-                 value={headerRow}
-                 onChange={e => setHeaderRow(Number(e.target.value))}
-                 disabled={loading}
+                 value={tabState.headerRow}
+                 onChange={e => updateTabState({ headerRow: Number(e.target.value) })}
+                 disabled={tabState.loading}
                />
              </div>
            </div>
            <button
              className="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
              onClick={fetchColumns}
-             disabled={!sheet || loading || !currentFile}
+             disabled={!tabState.sheet || tabState.loading || !tabState.currentFile}
            >
-             {loading ? 'Loading...' : 'Load Columns & Auto-Map'}
+             {tabState.loading ? 'Loading...' : 'Load Columns & Auto-Map'}
            </button>
          </div>
          
          {/* Column Mapping */}
-         {columns.length > 0 && (
+         {tabState.columns.length > 0 && (
            <div className="bg-white p-4 rounded-lg shadow mb-6">
              <h3 className="text-lg font-semibold text-blue-700 mb-4">Column Mapping</h3>
              <div className="grid grid-cols-2 gap-4">
@@ -1119,11 +1203,11 @@ const ODTargetTab = () => {
                  <label className="block font-medium mb-1">Area Column *</label>
                  <select
                    className="w-full p-2 border border-gray-300 rounded"
-                   value={columnSelections.area || ''}
-                   onChange={(e) => setColumnSelections(prev => ({...prev, area: e.target.value}))}
+                   value={tabState.columnSelections.area || ''}
+                   onChange={(e) => handleColumnChange('area', e.target.value)}
                  >
                    <option value="">Select Column</option>
-                   {columns.map(col => (
+                   {tabState.columns.map(col => (
                      <option key={col} value={col}>{col}</option>
                    ))}
                  </select>
@@ -1132,11 +1216,11 @@ const ODTargetTab = () => {
                  <label className="block font-medium mb-1">Net Value Column *</label>
                  <select
                    className="w-full p-2 border border-gray-300 rounded"
-                   value={columnSelections.net_value || ''}
-                   onChange={(e) => setColumnSelections(prev => ({...prev, net_value: e.target.value}))}
+                   value={tabState.columnSelections.net_value || ''}
+                   onChange={(e) => handleColumnChange('net_value', e.target.value)}
                  >
                    <option value="">Select Column</option>
-                   {columns.map(col => (
+                   {tabState.columns.map(col => (
                      <option key={col} value={col}>{col}</option>
                    ))}
                  </select>
@@ -1145,11 +1229,11 @@ const ODTargetTab = () => {
                  <label className="block font-medium mb-1">Due Date Column *</label>
                  <select
                    className="w-full p-2 border border-gray-300 rounded"
-                   value={columnSelections.due_date || ''}
-                   onChange={(e) => setColumnSelections(prev => ({...prev, due_date: e.target.value}))}
+                   value={tabState.columnSelections.due_date || ''}
+                   onChange={(e) => handleColumnChange('due_date', e.target.value)}
                  >
                    <option value="">Select Column</option>
-                   {columns.map(col => (
+                   {tabState.columns.map(col => (
                      <option key={col} value={col}>{col}</option>
                    ))}
                  </select>
@@ -1158,11 +1242,11 @@ const ODTargetTab = () => {
                  <label className="block font-medium mb-1">Executive Column *</label>
                  <select
                    className="w-full p-2 border border-gray-300 rounded"
-                   value={columnSelections.executive || ''}
-                   onChange={(e) => setColumnSelections(prev => ({...prev, executive: e.target.value}))}
+                   value={tabState.columnSelections.executive || ''}
+                   onChange={(e) => handleColumnChange('executive', e.target.value)}
                  >
                    <option value="">Select Column</option>
-                   {columns.map(col => (
+                   {tabState.columns.map(col => (
                      <option key={col} value={col}>{col}</option>
                    ))}
                  </select>
@@ -1172,44 +1256,38 @@ const ODTargetTab = () => {
          )}
          
          {/* Date Filter */}
-         {yearOptions.length > 0 && (
+         {tabState.yearOptions.length > 0 && (
            <div className="bg-white p-4 rounded-lg shadow mb-6">
              <h3 className="text-lg font-semibold text-blue-700 mb-4">Due Date Filter</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
                  <label className="block font-semibold mb-2">Select Years</label>
-                 <div className="max-h-32 overflow-y-auto border border-gray-300 rounded p-2">
-                   {yearOptions.map(year => (
-                     <label key={year} className="flex items-center mb-1">
+                 <div className="max-h-32 overflow-y-auto border border-gray-300 rounded p-3">
+                   {tabState.yearOptions.map(year => (
+                     <label key={year} className="flex items-center mb-2">
                        <input
                          type="checkbox"
-                         checked={filters.selectedYears.includes(year)}
+                         checked={tabState.filters.selectedYears.includes(year)}
                          onChange={(e) => {
                            if (e.target.checked) {
-                             setFilters(prev => ({
-                               ...prev,
-                               selectedYears: [...prev.selectedYears, year]
-                             }));
+                             handleFilterChange('selectedYears', [...tabState.filters.selectedYears, year]);
                            } else {
-                             setFilters(prev => ({
-                               ...prev,
-                               selectedYears: prev.selectedYears.filter(y => y !== year)
-                             }));
+                             handleFilterChange('selectedYears', tabState.filters.selectedYears.filter(y => y !== year));
                            }
                          }}
-                         className="mr-2"
+                         className="mr-3"
                        />
-                       <span className="text-sm">{year}</span>
+                       <span className="text-xm">{year}</span>
                      </label>
                    ))}
                  </div>
                </div>
                <div>
-                 <label className="block font-semibold mb-2">Select Till Month</label>
+                 <label className="block font-semibold mb-3">Select Till Month</label>
                  <select
                    className="w-full p-2 border border-gray-300 rounded"
-                   value={filters.tillMonth}
-                   onChange={(e) => setFilters(prev => ({...prev, tillMonth: e.target.value}))}
+                   value={tabState.filters.tillMonth}
+                   onChange={(e) => handleFilterChange('tillMonth', e.target.value)}
                  >
                    {monthOptions.map(month => (
                      <option key={month} value={month}>{month}</option>
@@ -1221,53 +1299,47 @@ const ODTargetTab = () => {
          )}
          
          {/* Filters */}
-         {(branchOptions.length > 0 || executiveOptions.length > 0) && (
+         {(tabState.branchOptions.length > 0 || tabState.executiveOptions.length > 0) && (
            <div className="bg-white p-4 rounded-lg shadow mb-6">
-             <h3 className="text-lg font-semibold text-blue-700 mb-4">Filter Options</h3>
+             <h3 className="text-lg font-semibold text-blue-700 mb-6">Filter Options</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                {/* Branches Filter */}
-               {branchOptions.length > 0 && (
+               {tabState.branchOptions.length > 0 && (
                  <div>
-                   <label className="block font-semibold mb-2">
-                     Branches ({filters.selectedBranches.length} of {branchOptions.length})
+                   <label className="block font-semibold mb-3">
+                     Branches ({tabState.filters.selectedBranches.length} of {tabState.branchOptions.length})
                    </label>
-                   <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                     <label className="flex items-center mb-2">
+                   <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+                     <label className="flex items-center mb-3">
                        <input
                          type="checkbox"
-                         checked={filters.selectedBranches.length === branchOptions.length}
+                         checked={tabState.filters.selectedBranches.length === tabState.branchOptions.length}
                          onChange={(e) => {
                            if (e.target.checked) {
-                             setFilters(prev => ({...prev, selectedBranches: branchOptions}));
+                             handleFilterChange('selectedBranches', tabState.branchOptions);
                            } else {
-                             setFilters(prev => ({...prev, selectedBranches: []}));
+                             handleFilterChange('selectedBranches', []);
                            }
                          }}
-                         className="mr-2"
+                         className="mr-3"
                        />
-                       <span className="font-medium text-sm">Select All</span>
+                       <span className="font-medium text-xm">Select All</span>
                      </label>
-                     {branchOptions.map(branch => (
-                       <label key={branch} className="flex items-center mb-1">
+                     {tabState.branchOptions.map(branch => (
+                       <label key={branch} className="flex items-center mb-2">
                          <input
                            type="checkbox"
-                           checked={filters.selectedBranches.includes(branch)}
+                           checked={tabState.filters.selectedBranches.includes(branch)}
                            onChange={(e) => {
                              if (e.target.checked) {
-                               setFilters(prev => ({
-                                 ...prev,
-                                 selectedBranches: [...prev.selectedBranches, branch]
-                               }));
+                               handleFilterChange('selectedBranches', [...tabState.filters.selectedBranches, branch]);
                              } else {
-                               setFilters(prev => ({
-                                 ...prev,
-                                 selectedBranches: prev.selectedBranches.filter(b => b !== branch)
-                               }));
+                               handleFilterChange('selectedBranches', tabState.filters.selectedBranches.filter(b => b !== branch));
                              }
                            }}
-                           className="mr-2"
+                           className="mr-3"
                          />
-                         <span className="text-xs">{branch}</span>
+                         <span className="text-xm">{branch}</span>
                        </label>
                      ))}
                    </div>
@@ -1275,48 +1347,42 @@ const ODTargetTab = () => {
                )}
                
                {/* Executives Filter */}
-               {executiveOptions.length > 0 && (
+               {tabState.executiveOptions.length > 0 && (
                  <div>
-                   <label className="block font-semibold mb-2">
-                     Executives ({filters.selectedExecutives.length} of {executiveOptions.length})
+                   <label className="block font-semibold mb-3">
+                     Executives ({tabState.filters.selectedExecutives.length} of {tabState.executiveOptions.length})
                    </label>
-                   <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                     <label className="flex items-center mb-2">
+                   <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+                     <label className="flex items-center mb-3">
                        <input
                          type="checkbox"
-                         checked={filters.selectedExecutives.length === executiveOptions.length}
+                         checked={tabState.filters.selectedExecutives.length === tabState.executiveOptions.length}
                          onChange={(e) => {
                            if (e.target.checked) {
-                             setFilters(prev => ({...prev, selectedExecutives: executiveOptions}));
+                             handleFilterChange('selectedExecutives', tabState.executiveOptions);
                            } else {
-                             setFilters(prev => ({...prev, selectedExecutives: []}));
+                             handleFilterChange('selectedExecutives', []);
                            }
                          }}
-                         className="mr-2"
+                         className="mr-3"
                        />
-                       <span className="font-medium text-sm">Select All</span>
+                       <span className="font-medium text-xm">Select All</span>
                      </label>
-                     {executiveOptions.map(exec => (
-                       <label key={exec} className="flex items-center mb-1">
+                     {tabState.executiveOptions.map(exec => (
+                       <label key={exec} className="flex items-center mb-2">
                          <input
                            type="checkbox"
-                           checked={filters.selectedExecutives.includes(exec)}
+                           checked={tabState.filters.selectedExecutives.includes(exec)}
                            onChange={(e) => {
                              if (e.target.checked) {
-                               setFilters(prev => ({
-                                 ...prev,
-                                 selectedExecutives: [...prev.selectedExecutives, exec]
-                               }));
+                               handleFilterChange('selectedExecutives', [...tabState.filters.selectedExecutives, exec]);
                              } else {
-                               setFilters(prev => ({
-                                 ...prev,
-                                 selectedExecutives: prev.selectedExecutives.filter(e => e !== exec)
-                               }));
+                               handleFilterChange('selectedExecutives', tabState.filters.selectedExecutives.filter(e => e !== exec));
                              }
                            }}
-                           className="mr-2"
+                           className="mr-3"
                          />
-                         <span className="text-xs">{exec}</span>
+                         <span className="text-xm">{exec}</span>
                        </label>
                      ))}
                    </div>
@@ -1330,26 +1396,26 @@ const ODTargetTab = () => {
          <div className="text-center mb-6">
            <button
              onClick={handleGenerateReport}
-             disabled={loading || !columns.length || !filters.selectedYears.length}
+             disabled={tabState.loading || !tabState.columns.length || !tabState.filters.selectedYears.length}
              className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
            >
-             {loading ? 'Generating...' : 'Generate Report'}
+             {tabState.loading ? 'Generating...' : 'Generate Report'}
            </button>
          </div>
          
          {/* Results */}
-         {results && (
+         {tabState.results && (
            <div className="bg-white p-6 rounded-lg shadow">
              <div className="flex justify-between items-center mb-4">
                <h3 className="text-xl font-bold text-blue-700">
-                 OD Target Results - {results.end_date || 'All Periods'}
+                 OD Target Results - {tabState.results.end_date || 'All Periods'}
                </h3>
                <button
                  onClick={handleDownloadPpt}
-                 disabled={downloadingPpt}
+                 disabled={tabState.downloadingPpt}
                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:bg-gray-400"
                >
-                 {downloadingPpt ? 'Generating PPT...' : 'Download PPT'}
+                 {tabState.downloadingPpt ? 'Generating PPT...' : 'Download PPT'}
                </button>
              </div>
              
@@ -1362,7 +1428,7 @@ const ODTargetTab = () => {
                <table className="min-w-full table-auto border-collapse border border-gray-300">
                  <thead>
                    <tr className="bg-blue-600 text-white">
-                     {results.columns.filter(col => col.toLowerCase() !== 's.no' && col.toLowerCase() !== 'sno').map(col => (
+                     {tabState.results.columns.filter(col => col.toLowerCase() !== 's.no' && col.toLowerCase() !== 'sno').map(col => (
                        <th key={col} className="border border-gray-300 px-4 py-2 text-left font-semibold">
                          {col}
                        </th>
@@ -1370,7 +1436,7 @@ const ODTargetTab = () => {
                    </tr>
                  </thead>
                  <tbody>
-                   {results.data.map((row, i) => (
+                   {tabState.results.data.map((row, i) => (
                      <tr 
                        key={i} 
                        className={`
@@ -1382,7 +1448,7 @@ const ODTargetTab = () => {
                          } hover:bg-blue-50
                        `}
                      >
-                       {results.columns.filter(col => col.toLowerCase() !== 's.no' && col.toLowerCase() !== 'sno').map((col, j) => (
+                       {tabState.results.columns.filter(col => col.toLowerCase() !== 's.no' && col.toLowerCase() !== 'sno').map((col, j) => (
                          <td key={j} className="border border-gray-300 px-4 py-2">
                            {col === 'TARGET' ? Number(row[col]).toFixed(2) : (row[col] || '')}
                          </td>
