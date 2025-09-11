@@ -1,212 +1,338 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, Mail, Lock, Phone, UserPlus, LogIn, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { 
+  User, Shield, Mail, Lock, Phone, 
+  UserPlus, LogIn, RefreshCw, Eye, EyeOff 
+} from 'lucide-react';
 import './LoginSystem.css';
 
-const API_BASE_URL = '/server/api';
+const API_BASE_URL = 'http://localhost:5001/api';
 
 const LoginSystem = ({ onLogin }) => {
-  // Main state management
   const [activeTab, setActiveTab] = useState('admin');
-  const [currentView, setCurrentView] = useState('login'); // 'login', 'register', 'otp'
+  const [currentView, setCurrentView] = useState('login'); 
+  // views: login, register, otp, forgotPassword, forgotOtp, resetPassword
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null);
 
-  // Form states
-  const [loginForm, setLoginForm] = useState({
-    email: '',
-    password: ''
-  });
-
+  // Forms
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [registerForm, setRegisterForm] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    full_name: '',
-    phone: ''
+    email: '', password: '', confirmPassword: '', full_name: '', phone: ''
   });
-
-  const [otpForm, setOtpForm] = useState({
-    otp_code: '',
-    user_id: null
-  });
-
+  const [otpForm, setOtpForm] = useState({ otp_code: '', user_id: null, email: '', purpose: '' });
+  const [resetForm, setResetForm] = useState({ newPassword: '', confirmPassword: '' });
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // Check for existing auth on mount
+  // On mount, check localStorage
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     const userData = localStorage.getItem('user_data');
     if (token && userData) {
-      setUser(JSON.parse(userData));
+      try {
+        setUser(JSON.parse(userData));
+      } catch (e) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+      }
     }
   }, []);
 
-  // API calls
+  // API helper
   const apiCall = async (endpoint, method = 'GET', data = null) => {
     try {
-      const config = {
-        method,
-        headers: {
+      const config = { 
+        method, 
+        headers: { 
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       };
-
-      if (data) {
-        config.body = JSON.stringify(data);
-      }
-
+      
+      if (data) config.body = JSON.stringify(data);
+      
       const token = localStorage.getItem('auth_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+      
+      console.log(`Making API call to ${API_BASE_URL}${endpoint}`, { method, data });
+      
       const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
       const result = await response.json();
-
+      
+      console.log('API Response:', response.status, result);
+      
       if (!response.ok) {
-        throw new Error(result.error || 'An error occurred');
+        throw new Error(result.error || result.message || `HTTP ${response.status}`);
       }
-
+      
       return result;
     } catch (error) {
+      console.error('API Error:', error);
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to server. Please check if the backend is running.');
+      }
       throw error;
     }
   };
 
-  // Handle login
+  // Handle tab switch
+  const handleTabSwitch = (tab) => {
+    console.log(`Switching to ${tab} tab`);
+    setActiveTab(tab);
+    setCurrentView('login');
+    setLoginForm({ email: '', password: '' });
+    setRegisterForm({ email: '', password: '', confirmPassword: '', full_name: '', phone: '' });
+    setOtpForm({ otp_code: '', user_id: null, email: '', purpose: '' });
+    setResetForm({ newPassword: '', confirmPassword: '' });
+    setMessage({ type: '', text: '' });
+    setShowPassword(false);
+  };
+
+  // Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-
+    setMessage({ type: '', text: '' });
+    
     try {
+      if (!loginForm.email.trim() || !loginForm.password.trim()) {
+        throw new Error('Email and password are required');
+      }
+
       const result = await apiCall('/login', 'POST', {
-        ...loginForm,
+        email: loginForm.email.trim(),
+        password: loginForm.password,
         user_type: activeTab
       });
 
       if (result.requires_otp) {
-        setOtpForm({ ...otpForm, user_id: result.user_id });
+        setOtpForm({ 
+          otp_code: '', 
+          user_id: result.user_id, 
+          email: loginForm.email.trim(), 
+          purpose: 'login' 
+        });
         setCurrentView('otp');
-        setMessage({ type: 'success', text: result.message });
-
-        // Show OTP in demo (remove in production)
-        if (result.otp) {
-          setMessage({
-            type: 'info',
-            text: `OTP sent! Demo OTP: ${result.otp}`
-          });
-        }
+        setMessage({ 
+          type: 'success', 
+          text: result.message + (result.otp ? ` (OTP: ${result.otp})` : '')
+        });
       } else if (result.token && result.user) {
-        // Store auth data
         localStorage.setItem('auth_token', result.token);
         localStorage.setItem('user_data', JSON.stringify(result.user));
-
         setUser(result.user);
         if (onLogin) onLogin(result.user);
-        setMessage({ type: 'success', text: result.message || 'Login successful' });
-
-        // Reset forms
-        setLoginForm({ email: '', password: '' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
     }
-
     setIsLoading(false);
   };
 
-  // Handle registration
+  // Register
   const handleRegister = async (e) => {
     e.preventDefault();
-
+    
+    // Validation
+    if (!registerForm.full_name.trim()) {
+      setMessage({ type: 'error', text: 'Full name is required' });
+      return;
+    }
+    if (!registerForm.email.trim()) {
+      setMessage({ type: 'error', text: 'Email is required' });
+      return;
+    }
+    if (!registerForm.phone.trim()) {
+      setMessage({ type: 'error', text: 'Phone number is required' });
+      return;
+    }
     if (registerForm.password !== registerForm.confirmPassword) {
       setMessage({ type: 'error', text: 'Passwords do not match' });
       return;
     }
-
     if (registerForm.password.length < 6) {
       setMessage({ type: 'error', text: 'Password must be at least 6 characters' });
       return;
     }
-
+    
     setIsLoading(true);
-
+    setMessage({ type: '', text: '' });
+    
     try {
       const result = await apiCall('/register', 'POST', {
-        ...registerForm,
+        email: registerForm.email.trim(),
+        password: registerForm.password,
+        full_name: registerForm.full_name.trim(),
+        phone: registerForm.phone.trim(),
         user_type: activeTab
       });
-
+      
       setMessage({ type: 'success', text: result.message });
       setCurrentView('login');
-      setRegisterForm({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        full_name: '',
-        phone: ''
+      
+      // Clear registration form
+      setRegisterForm({ 
+        email: '', password: '', confirmPassword: '', full_name: '', phone: '' 
       });
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
     }
-
     setIsLoading(false);
   };
 
-  // Handle OTP verification
+  // Verify login OTP
   const handleOtpVerification = async (e) => {
     e.preventDefault();
+    
+    if (!otpForm.otp_code.trim()) {
+      setMessage({ type: 'error', text: 'OTP code is required' });
+      return;
+    }
+    
     setIsLoading(true);
-
+    setMessage({ type: '', text: '' });
+    
     try {
-      const result = await apiCall('/verify-otp', 'POST', otpForm);
-
-      // Store auth data
+      const result = await apiCall('/verify-otp', 'POST', {
+        user_id: otpForm.user_id,
+        otp_code: otpForm.otp_code.trim(),
+        email: otpForm.email,
+        purpose: otpForm.purpose
+      });
+      
       localStorage.setItem('auth_token', result.token);
       localStorage.setItem('user_data', JSON.stringify(result.user));
-
       setUser(result.user);
+      
       if (onLogin) onLogin(result.user);
-      setMessage({ type: 'success', text: result.message });
-
+      
       // Reset forms
-      setLoginForm({ email: '', password: '' });
-      setOtpForm({ otp_code: '', user_id: null });
       setCurrentView('login');
+      setOtpForm({ otp_code: '', user_id: null, email: '', purpose: '' });
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
     }
-
     setIsLoading(false);
   };
 
-  // Handle OTP resend
+  // Resend OTP
   const handleResendOtp = async () => {
     setIsLoading(true);
-
     try {
-      const result = await apiCall('/resend-otp', 'POST', {
-        user_id: otpForm.user_id
+      const result = await apiCall('/resend-otp', 'POST', { 
+        user_id: otpForm.user_id, 
+        purpose: otpForm.purpose 
       });
-
-      setMessage({ type: 'success', text: result.message });
-
-      // Show OTP in demo (remove in production)
-      if (result.otp) {
-        setMessage({
-          type: 'info',
-          text: `OTP resent! Demo OTP: ${result.otp}`
-        });
-      }
+      setMessage({ 
+        type: 'success', 
+        text: result.message + (result.otp ? ` (OTP: ${result.otp})` : '') 
+      });
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
     }
-
     setIsLoading(false);
   };
 
-  // Handle logout
+  // Forgot Password (send OTP)
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    
+    if (!loginForm.email.trim()) {
+      setMessage({ type: 'error', text: 'Email is required' });
+      return;
+    }
+    
+    setIsLoading(true);
+    setMessage({ type: '', text: '' });
+    
+    try {
+      const result = await apiCall('/forgot-password', 'POST', { 
+        email: loginForm.email.trim(), 
+        user_type: activeTab 
+      });
+      
+      setMessage({ 
+        type: 'success', 
+        text: result.message + (result.otp ? ` (OTP: ${result.otp})` : '') 
+      });
+      setOtpForm({ 
+        otp_code: '', 
+        email: loginForm.email.trim(), 
+        user_id: null, 
+        purpose: 'reset' 
+      });
+      setCurrentView('forgotOtp');
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    }
+    setIsLoading(false);
+  };
+
+  // Verify forgot OTP
+  const handleForgotOtp = async (e) => {
+    e.preventDefault();
+    
+    if (!otpForm.otp_code.trim()) {
+      setMessage({ type: 'error', text: 'OTP code is required' });
+      return;
+    }
+    
+    setIsLoading(true);
+    setMessage({ type: '', text: '' });
+    
+    try {
+      const result = await apiCall('/verify-forgot-otp', 'POST', { 
+        email: otpForm.email, 
+        otp_code: otpForm.otp_code.trim() 
+      });
+      setMessage({ type: 'success', text: result.message });
+      setCurrentView('resetPassword');
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    }
+    setIsLoading(false);
+  };
+
+  // Reset password
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    
+    if (!resetForm.newPassword || !resetForm.confirmPassword) {
+      setMessage({ type: 'error', text: 'Both password fields are required' });
+      return;
+    }
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
+    if (resetForm.newPassword.length < 6) {
+      setMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+      return;
+    }
+    
+    setIsLoading(true);
+    setMessage({ type: '', text: '' });
+    
+    try {
+      const result = await apiCall('/reset-password', 'POST', { 
+        email: otpForm.email, 
+        otp_code: otpForm.otp_code, 
+        new_password: resetForm.newPassword 
+      });
+      
+      setMessage({ type: 'success', text: result.message });
+      setCurrentView('login');
+      
+      // Clear forms
+      setResetForm({ newPassword: '', confirmPassword: '' });
+      setOtpForm({ otp_code: '', user_id: null, email: '', purpose: '' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    }
+    setIsLoading(false);
+  };
+
+  // Logout
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
@@ -214,53 +340,62 @@ const LoginSystem = ({ onLogin }) => {
     setMessage({ type: 'success', text: 'Logged out successfully' });
   };
 
-  // Clear messages after 5 seconds
+  // Auto-clear messages
   useEffect(() => {
     if (message.text) {
-      const timer = setTimeout(() => {
-        setMessage({ type: '', text: '' });
-      }, 5000);
+      const timer = setTimeout(() => setMessage({ type: '', text: '' }), 5000);
       return () => clearTimeout(timer);
     }
   }, [message]);
 
-  // If user is logged in, show dashboard
+  // Get current view title
+  const getViewTitle = () => {
+    const userTypeDisplay = activeTab === 'admin' ? 'Admin' : 'User';
+    switch (currentView) {
+      case 'login': return `${userTypeDisplay} Login`;
+      case 'register': return `${userTypeDisplay} Registration`;
+      case 'otp': return 'Enter OTP';
+      case 'forgotPassword': return 'Forgot Password';
+      case 'forgotOtp': return 'Verify Reset OTP';
+      case 'resetPassword': return 'Reset Password';
+      default: return `${userTypeDisplay} Login`;
+    }
+  };
+
+  // Get current view subtitle
+  const getViewSubtitle = () => {
+    switch (currentView) {
+      case 'login': return `Sign in to your ${activeTab} account`;
+      case 'register': return `Create a new ${activeTab} account`;
+      case 'otp': return 'Check your email for the OTP code';
+      case 'forgotPassword': return 'Enter your email to reset password';
+      case 'forgotOtp': return 'Enter the OTP sent to your email';
+      case 'resetPassword': return 'Create your new password';
+      default: return '';
+    }
+  };
+
+  // ------------- UI -------------
+  
+  // Logged in user dashboard
   if (user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br">
         <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              {user.user_type === 'admin' ? (
-                <Shield className="w-8 h-8 text-green-600" />
-              ) : (
+              {user.user_type === 'admin' ? 
+                <Shield className="w-8 h-8 text-green-600" /> : 
                 <User className="w-8 h-8 text-green-600" />
-              )}
+              }
             </div>
-            <h2 className="text-2xl font-bold text-gray-800">Welcome!</h2>
-            <p className="text-gray-600 capitalize">{user.user_type} Dashboard</p>
+            <h2 className="text-2xl font-bold dashboard-text">Welcome, {user.full_name}!</h2>
+            <p className="dashboard-subtitle capitalize">{user.user_type} Dashboard</p>
+            <p className="text-sm dashboard-subtitle">{user.email}</p>
           </div>
-
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Name</p>
-              <p className="font-semibold text-gray-800">{user.full_name}</p>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Email</p>
-              <p className="font-semibold text-gray-800">{user.email}</p>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Account Type</p>
-              <p className="font-semibold text-gray-800 capitalize">{user.user_type}</p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="w-full mt-6 bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-colors font-semibold"
+          <button 
+            onClick={handleLogout} 
+            className="w-full mt-6 bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
           >
             Logout
           </button>
@@ -270,298 +405,395 @@ const LoginSystem = ({ onLogin }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br login-container">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
 
-        {/* Header Tabs */}
-        <div className="flex bg-gray-100">
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`flex-1 py-4 px-6 text-sm font-semibold transition-colors ${activeTab === 'admin'
-                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-800'
+        {/* Tabs - Only show on login and register views */}
+        {(currentView === 'login' || currentView === 'register') && (
+          <div className="flex bg-gray-50 border-b">
+            <button 
+              onClick={() => handleTabSwitch('admin')}
+              className={`flex-1 py-4 px-6 text-sm font-semibold transition-all duration-200 login-system-tab ${
+                activeTab === 'admin' ? 'active' : ''
               }`}
-          >
-            <Shield className="w-4 h-4 inline mr-2" />
-            Admin Login
-          </button>
-          <button
-            onClick={() => setActiveTab('regular')}
-            className={`flex-1 py-4 px-6 text-sm font-semibold transition-colors ${activeTab === 'regular'
-                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-800'
+            >
+              <Shield className="w-4 h-4 inline mr-2" /> 
+              Admin
+            </button>
+            <button 
+              onClick={() => handleTabSwitch('regular')}
+              className={`flex-1 py-4 px-6 text-sm font-semibold transition-all duration-200 login-system-tab ${
+                activeTab === 'regular' ? 'active' : ''
               }`}
-          >
-            <User className="w-4 h-4 inline mr-2" />
-            User Login
-          </button>
-        </div>
+            >
+              <User className="w-4 h-4 inline mr-2" /> 
+              User
+            </button>
+          </div>
+        )}
 
-        <div className="p-8">
+        <div className="p-8 form-content">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">{getViewTitle()}</h2>
+            <p className="text-gray-600 text-sm mt-1">{getViewSubtitle()}</p>
+          </div>
+
           {/* Messages */}
           {message.text && (
-            <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700 border border-red-200' :
-                message.type === 'success' ? 'bg-green-100 text-green-700 border border-green-200' :
-                  'bg-blue-100 text-blue-700 border border-blue-200'
-              }`}>
+            <div className={`mb-4 p-3 rounded-lg text-sm font-medium ${
+              message.type === 'error' 
+                ? 'alert-error' 
+                : 'alert-success'
+            }`}>
               {message.text}
             </div>
           )}
 
-          {/* OTP Verification View */}
+          {/* OTP Verification */}
           {currentView === 'otp' && (
-            <div>
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-800">Verify OTP</h2>
-                <p className="text-gray-600">Enter the 6-digit code sent to your email</p>
+            <form onSubmit={handleOtpVerification} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter OTP Code
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="000000" 
+                  value={otpForm.otp_code}
+                  onChange={(e) => setOtpForm({ ...otpForm, otp_code: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg font-mono tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  maxLength="6"
+                  autoComplete="one-time-code"
+                  required 
+                />
               </div>
-
-              <form onSubmit={handleOtpVerification} className="space-y-4">
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Enter 6-digit OTP"
-                    value={otpForm.otp_code}
-                    onChange={(e) => setOtpForm({ ...otpForm, otp_code: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg tracking-widest"
-                    style={{
-                      background: "#fff",
-                      color: "#1e293b",
-                      fontSize: "1rem",
-                      fontWeight: "400",
-                      boxShadow: "none"
-                    }}
-                    maxLength="6"
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
-                >
-                  {isLoading ? 'Verifying...' : 'Verify OTP'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleResendOtp}
-                  disabled={isLoading}
-                  className="w-full text-blue-600 py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors font-medium disabled:opacity-50"
-                >
-                  <RefreshCw className="w-4 h-4 inline mr-2" />
-                  Resend OTP
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCurrentView('login')}
-                  className="w-full text-gray-600 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Back to Login
-                </button>
-              </form>
-            </div>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? 'Verifying...' : 'Verify OTP'}
+              </button>
+              <button 
+                type="button" 
+                onClick={handleResendOtp} 
+                disabled={isLoading}
+                className="w-full text-blue-600 py-2 font-medium hover:text-blue-700 disabled:opacity-50 link-button"
+              >
+                <RefreshCw className="w-4 h-4 inline mr-2" /> 
+                Resend OTP
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setCurrentView('login')} 
+                className="w-full text-gray-600 py-2 font-medium hover:text-gray-700 link-button"
+              >
+                Back to Login
+              </button>
+            </form>
           )}
 
-          {/* Login View */}
+          {/* Login */}
           {currentView === 'login' && (
-            <div>
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {activeTab === 'admin' ? (
-                    <Shield className="w-8 h-8 text-blue-600" />
-                  ) : (
-                    <User className="w-8 h-8 text-blue-600" />
-                  )}
-                </div>
-                <h2 className="text-2xl font-bold text-gray-800 capitalize">
-                  {activeTab} Login
-                </h2>
-                <p className="text-gray-600">
-                  Sign in to your {activeTab} account
-                </p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Mail className="w-4 h-4 inline mr-1" />
+                  Email
+                </label>
+                <input 
+                  type="email" 
+                  placeholder="Enter your email" 
+                  value={loginForm.email}
+                  onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  autoComplete="email"
+                  required 
+                />
               </div>
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <div className="relative">
-                    <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-                    <input
-                      type="email"
-                      placeholder="Email address"
-                      value={loginForm.email}
-                      onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                </div>
-
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Lock className="w-4 h-4 inline mr-1" />
+                  Password
+                </label>
                 <div className="relative">
-  <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-  <input
-  type={showPassword ? "text" : "password"}
-  placeholder="Password"
-  value={loginForm.password}
-  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  required
-/>
-  {/* <button
-  type="button"
-  onClick={() => setShowPassword(!showPassword)}
-  className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
->
-  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-</button> */}
-</div>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
-                >
-                  {isLoading ? 'Signing in...' : (
-                    <>
-                      <LogIn className="w-4 h-4 inline mr-2" />
-                      Sign In
-                    </>
-                  )}
-                </button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <p className="text-gray-600">
-                  Don't have an account?{' '}
-                  <button
-                    onClick={() => setCurrentView('register')}
-                    className="text-blue-600 hover:text-blue-800 font-semibold"
+                  <input 
+                    type={showPassword ? 'text' : 'password'} 
+                    placeholder="Enter your password" 
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} 
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12" 
+                    autoComplete="current-password"
+                    required 
+                  />
+                                    <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPassword(!showPassword);
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    style={{ 
+                      outline: 'none',
+                      border: 'none',
+                      background: 'transparent'
+                    }}
                   >
-                    Register here
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                </p>
+                </div>
               </div>
-            </div>
+              <button 
+                type="submit" 
+                disabled={isLoading} 
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </button>
+              <div className="text-center space-y-2">
+                <button 
+                  type="button"
+                  onClick={() => setCurrentView('forgotPassword')} 
+                  className="text-blue-600 hover:text-blue-700 font-medium link-button"
+                >
+                  Forgot Password?
+                </button>
+                <div className="text-gray-500">or</div>
+                <button 
+                  type="button"
+                  onClick={() => setCurrentView('register')} 
+                  className="text-blue-600 hover:text-blue-700 font-medium link-button"
+                >
+                  Create new account
+                </button>
+              </div>
+            </form>
           )}
 
-          {/* Register View */}
+          {/* Register */}
           {currentView === 'register' && (
-            <div>
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <UserPlus className="w-8 h-8 text-green-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Create {activeTab} Account
-                </h2>
-                <p className="text-gray-600">
-                  Join us today as a {activeTab} user
-                </p>
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Enter your full name" 
+                  value={registerForm.full_name}
+                  onChange={(e) => setRegisterForm({ ...registerForm, full_name: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  autoComplete="name"
+                  required 
+                />
               </div>
-
-              <form onSubmit={handleRegister} className="space-y-4">
-         
-                <div>
-                  <div className="relative">
-                    <User className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-                    <input
-                      type="Full name"
-                      placeholder="Full Name"
-                      value={registerForm.full_name}
-                      onChange={(e) => setRegisterForm({ ...registerForm, full_name: e.target.value })}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="relative">
-                    <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-                    <input
-                      type="email"
-                      placeholder="Email address"
-                      value={registerForm.email}
-                      onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="relative">
-                    <Phone className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-                    <input
-                      type="tel"
-                      placeholder="Phone Number"
-                      value={registerForm.phone}
-                      onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="relative">
-                    <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Password"
-                      value={registerForm.password}
-                      onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-                      className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                 
-                  </div>
-                </div>
-
-                <div>
-                  <div className="relative">
-                    <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-                    <input
-                      type="password"
-                      placeholder="Confirm Password"
-                      value={registerForm.confirmPassword}
-                      onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-semibold disabled:opacity-50"
-                >
-                  {isLoading ? 'Creating Account...' : (
-                    <>
-                      <UserPlus className="w-4 h-4 inline mr-2" />
-                      Create Account
-                    </>
-                  )}
-                </button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <p className="text-gray-600">
-                  Already have an account?{' '}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Mail className="w-4 h-4 inline mr-1" />
+                  Email
+                </label>
+                <input 
+                  type="email" 
+                  placeholder="Enter your email" 
+                  value={registerForm.email}
+                  onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  autoComplete="email"
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Phone className="w-4 h-4 inline mr-1" />
+                  Phone
+                </label>
+                <input 
+                  type="tel" 
+                  placeholder="Enter your phone number" 
+                  value={registerForm.phone}
+                  onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  autoComplete="tel"
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Lock className="w-4 h-4 inline mr-1" />
+                  Password
+                </label>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? 'text' : 'password'} 
+                    placeholder="Create a password" 
+                    value={registerForm.password}
+                    onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} 
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12" 
+                    autoComplete="new-password"
+                    required 
+                  />
                   <button
-                    onClick={() => setCurrentView('login')}
-                    className="text-blue-600 hover:text-blue-800 font-semibold"
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
-                    Sign in here
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                </p>
+                </div>
               </div>
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password
+                </label>
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  placeholder="Confirm your password" 
+                  value={registerForm.confirmPassword}
+                  onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  autoComplete="new-password"
+                  required 
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? 'Creating Account...' : 'Create Account'}
+              </button>
+              <div className="text-center">
+                <button 
+                  type="button"
+                  onClick={() => setCurrentView('login')} 
+                  className="text-blue-600 hover:text-blue-700 font-medium link-button"
+                >
+                  Already have an account? Sign in
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Forgot Password */}
+          {currentView === 'forgotPassword' && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Mail className="w-4 h-4 inline mr-1" />
+                  Email
+                </label>
+                <input 
+                  type="email" 
+                  placeholder="Enter your email" 
+                  value={loginForm.email}
+                  onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  autoComplete="email"
+                  required 
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full bg-yellow-600 text-white py-3 rounded-lg font-medium hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? 'Sending OTP...' : 'Send Reset OTP'}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setCurrentView('login')} 
+                className="w-full text-gray-600 py-2 font-medium hover:text-gray-700 link-button"
+              >
+                Back to Login
+              </button>
+            </form>
+          )}
+
+          {/* Forgot OTP */}
+          {currentView === 'forgotOtp' && (
+            <form onSubmit={handleForgotOtp} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter Reset OTP
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="000000" 
+                  value={otpForm.otp_code}
+                  onChange={(e) => setOtpForm({ ...otpForm, otp_code: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg font-mono tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  maxLength="6"
+                  autoComplete="one-time-code"
+                  required 
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? 'Verifying...' : 'Verify Reset OTP'}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setCurrentView('forgotPassword')} 
+                className="w-full text-gray-600 py-2 font-medium hover:text-gray-700 link-button"
+              >
+                Back
+              </button>
+            </form>
+          )}
+
+          {/* Reset Password */}
+          {currentView === 'resetPassword' && (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Lock className="w-4 h-4 inline mr-1" />
+                  New Password
+                </label>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? 'text' : 'password'} 
+                    placeholder="Enter new password" 
+                    value={resetForm.newPassword}
+                    onChange={(e) => setResetForm({ ...resetForm, newPassword: e.target.value })} 
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12" 
+                    autoComplete="new-password"
+                    required 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm New Password
+                </label>
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  placeholder="Confirm new password" 
+                  value={resetForm.confirmPassword}
+                  onChange={(e) => setResetForm({ ...resetForm, confirmPassword: e.target.value })} 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  autoComplete="new-password"
+                  required 
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? 'Resetting Password...' : 'Reset Password'}
+              </button>
+            </form>
           )}
         </div>
       </div>
