@@ -9,7 +9,6 @@ const OSProcessor = () => {
   const [headerRow, setHeaderRow] = useState(1);
   const [columns, setColumns] = useState([]);
   const [execCodeCol, setExecCodeCol] = useState("");
-  const [preview, setPreview] = useState([]);
   const [processedFile, setProcessedFile] = useState(null);
   const [customFilename, setCustomFilename] = useState("");
 
@@ -50,9 +49,6 @@ const OSProcessor = () => {
         setSelectedSheet(sheets[0]);
 
         const sheet = workbook.Sheets[sheets[0]];
-        const data = XLSX.utils.sheet_to_json(sheet, { header: headerRow, raw: false });
-        setPreview(data.slice(0, 10));
-
         const headers = XLSX.utils.sheet_to_json(sheet, {
           header: 1,
           range: headerRow,
@@ -87,9 +83,6 @@ const OSProcessor = () => {
       reader.onload = (evt) => {
         const workbook = XLSX.read(evt.target.result, { type: "binary" });
         const sheet = workbook.Sheets[newSheet];
-        const data = XLSX.utils.sheet_to_json(sheet, { header: headerRow, raw: false });
-        setPreview(data.slice(0, 10));
-
         const headers = XLSX.utils.sheet_to_json(sheet, {
           header: 1,
           range: headerRow,
@@ -339,42 +332,6 @@ const OSProcessor = () => {
               {loadingSave && <LoadingSpinner />}
               {loadingSave ? 'Saving...' : 'Save to Database'}
             </button>
-          </div>
-        )}
-
-        {/* Preview Section (Optional) */}
-        {preview.length > 0 && (
-          <div className="bg-white border rounded-md p-4">
-            <h4 className="font-medium text-gray-900 mb-3">Data Preview (First 10 rows)</h4>
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {Object.keys(preview[0]).slice(0, 6).map((col, i) => (
-                      <th key={i} className="border px-2 py-1 text-sm font-medium text-gray-900">
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.slice(0, 5).map((row, i) => (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      {Object.values(row).slice(0, 6).map((val, j) => (
-                        <td key={j} className="border px-2 py-1 text-xs text-gray-700">
-                          {String(val).substring(0, 50)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {Object.keys(preview[0]).length > 6 && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Showing first 6 columns of {Object.keys(preview[0]).length} total columns
-                </p>
-              )}
-            </div>
           </div>
         )}
       </div>
