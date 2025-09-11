@@ -84,7 +84,7 @@ const BilledCustomersTab = () => {
    if (!selectedFiles.salesFile) return;
    
    try {
-     const res = await axios.post('/api/branch/sheets', { filename: selectedFiles.salesFile });
+     const res = await axios.post('http://localhost:5000/api/branch/sheets', { filename: selectedFiles.salesFile });
      if (res.data && res.data.sheets) {
        setSheets(res.data.sheets);
      } else {
@@ -113,7 +113,7 @@ const BilledCustomersTab = () => {
    
    try {
      // Step 1: Get columns
-     const colRes = await axios.post('/api/branch/get_columns', {
+     const colRes = await axios.post('http://localhost:5000/api/branch/get_columns', {
        filename: selectedFiles.salesFile,
        sheet_name: sheet,
        header: headerRow
@@ -129,7 +129,7 @@ const BilledCustomersTab = () => {
      
      // Step 2: Auto-map columns
      try {
-       const mapRes = await axios.post('/api/executive/customer_auto_map_columns', {
+       const mapRes = await axios.post('http://localhost:5000/api/executive/customer_auto_map_columns', {
          sales_file_path: `uploads/${selectedFiles.salesFile}`
        });
        
@@ -170,7 +170,7 @@ const BilledCustomersTab = () => {
    }
    
    try {
-     const res = await axios.post('/api/executive/customer_get_options', {
+     const res = await axios.post('http://localhost:5000/api/executive/customer_get_options', {
        sales_file_path: `uploads/${selectedFiles.salesFile}`
      });
      
@@ -260,7 +260,7 @@ const BilledCustomersTab = () => {
        selected_executives: filters.selectedExecutives
      };
      
-     const res = await axios.post('/api/executive/calculate_customer_analysis', payload);
+     const res = await axios.post('http://localhost:5000/api/executive/calculate_customer_analysis', payload);
      
      if (res.data && res.data.success) {
        setResults(res.data.results);
@@ -297,7 +297,7 @@ const BilledCustomersTab = () => {
        logo_file: null
      };
      
-     const response = await axios.post('/api/executive/generate_customer_ppt', payload, {
+     const response = await axios.post('http://localhost:5000/api/executive/generate_customer_ppt', payload, {
        responseType: 'blob',
        headers: {
          'Content-Type': 'application/json',
@@ -754,7 +754,7 @@ const ODTargetTab = () => {
    setError(null);
    
    try {
-     const res = await axios.post('/api/branch/sheets', { 
+     const res = await axios.post('http://localhost:5000/api/branch/sheets', { 
        filename: currentFile 
      });
      
@@ -791,7 +791,7 @@ const ODTargetTab = () => {
    
    try {
      // Step 1: Get columns
-     const colRes = await axios.post('/api/branch/get_columns', {
+     const colRes = await axios.post('http://localhost:5000/api/branch/get_columns', {
        filename: currentFile,
        sheet_name: sheet,
        header: headerRow
@@ -807,7 +807,7 @@ const ODTargetTab = () => {
      
      // Step 2: Auto-map columns
      try {
-       const mapRes = await axios.post('/api/executive/od_target_auto_map_columns', {
+       const mapRes = await axios.post('http://localhost:5000/api/executive/od_target_auto_map_columns', {
          os_file_path: `uploads/${currentFile}`
        });
        
@@ -848,7 +848,7 @@ const ODTargetTab = () => {
    }
    
    try {
-     const res = await axios.post('/api/executive/od_target_get_options', {
+     const res = await axios.post('http://localhost:5000/api/executive/od_target_get_options', {
        os_file_path: `uploads/${currentFile}`
      });
      
@@ -935,7 +935,7 @@ const ODTargetTab = () => {
        selected_executives: filters.selectedExecutives
      };
      
-     const res = await axios.post('/api/executive/calculate_od_target', payload);
+     const res = await axios.post('http://localhost:5000/api/executive/calculate_od_target', payload);
      
      if (res.data && res.data.success) {
        setResults(res.data);
@@ -975,7 +975,7 @@ const ODTargetTab = () => {
        logo_file: null
      };
      
-     const response = await axios.post('/api/executive/generate_od_target_ppt', payload, {
+     const response = await axios.post('http://localhost:5000/api/executive/generate_od_target_ppt', payload, {
        responseType: 'blob',
        headers: {
          'Content-Type': 'application/json',
