@@ -33,7 +33,7 @@ const ExecutiveBudgetVsBilled = () => {
   // Fetch available sheet names from backend
   const fetchSheets = async (filename, setter) => {
     try {
-      const res = await axios.post('/api/branch/sheets', { filename });
+      const res = await axios.post('http://localhost:5000/api/branch/sheets', { filename });
       setter(res.data.sheets);
     } catch (error) {
       console.error('Error fetching sheets:', error);
@@ -60,7 +60,7 @@ const ExecutiveBudgetVsBilled = () => {
 
     try {
       const getCols = async (filename, sheet_name, header) => {
-        const res = await axios.post('/api/branch/get_columns', {
+        const res = await axios.post('http://localhost:5000/api/branch/get_columns', {
           filename,
           sheet_name,
           header
@@ -77,7 +77,7 @@ const ExecutiveBudgetVsBilled = () => {
       setTargetColumns(targetCols);
 
       // Use executive auto-mapping endpoint
-      const res = await axios.post('/api/executive/auto_map_columns', {
+      const res = await axios.post('http://localhost:5000/api/executive/auto_map_columns', {
         sales_file_path: `uploads/${selectedFiles.salesFile}`,
         budget_file_path: `uploads/${selectedFiles.budgetFile}`
       });
@@ -109,7 +109,7 @@ const ExecutiveBudgetVsBilled = () => {
 
   const fetchExecAndBranches = async (autoMapData) => {
     try {
-      const res = await axios.post('/api/executive/get_exec_branch_options', {
+      const res = await axios.post('http://localhost:5000/api/executive/get_exec_branch_options', {
         sales_file_path: `uploads/${selectedFiles.salesFile}`,
         budget_file_path: `uploads/${selectedFiles.budgetFile}`
       });
@@ -145,7 +145,7 @@ const ExecutiveBudgetVsBilled = () => {
     if (!dateCol) return;
 
     try {
-      const res = await axios.post('/api/executive/get_available_months', {
+      const res = await axios.post('http://localhost:5000/api/executive/get_available_months', {
         sales_file_path: `uploads/${selectedFiles.salesFile}`
       });
 
@@ -266,7 +266,7 @@ const ExecutiveBudgetVsBilled = () => {
 
       console.log('Executive calculate payload:', payload);
 
-      const res = await axios.post('/api/executive/calculate_budget_vs_billed', payload);
+      const res = await axios.post('http://localhost:5000/api/executive/calculate_budget_vs_billed', payload);
       
       if (res.data.success) {
         setResults(res.data);
@@ -319,7 +319,7 @@ const ExecutiveBudgetVsBilled = () => {
 
       console.log('PPT generation payload:', payload);
 
-      const response = await axios.post('/api/executive/generate_ppt', payload, {
+      const response = await axios.post('http://localhost:5000/api/executive/generate_ppt', payload, {
         responseType: 'blob', // Important for file download
         headers: {
           'Content-Type': 'application/json',
@@ -402,7 +402,7 @@ const ExecutiveBudgetVsBilled = () => {
 
       console.log('Proof of calculation payload:', payload);
 
-      const response = await axios.post('/api/executive/generate_proof_of_calculation', payload, {
+      const response = await axios.post('http://localhost:5000/api/executive/generate_proof_of_calculation', payload, {
         responseType: 'blob', // Important for file download
         headers: {
           'Content-Type': 'application/json',
@@ -505,7 +505,7 @@ const ExecutiveBudgetVsBilled = () => {
         </div>
 
         <button
-          className="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
           onClick={fetchColumns}
           disabled={!salesSheet || !targetSheet || loading}
         >
@@ -606,8 +606,8 @@ const ExecutiveBudgetVsBilled = () => {
                 <label className="block font-semibold mb-2">
                   Executives ({filters.selectedExecutives.length} of {executiveOptions.length})
                 </label>
-                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                  <label className="flex items-center mb-2">
+                <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+                  <label className="flex items-center mb-3">
                     <input
                       type="checkbox"
                       checked={filters.selectedExecutives.length === executiveOptions.length}
@@ -618,12 +618,12 @@ const ExecutiveBudgetVsBilled = () => {
                           setFilters(prev => ({ ...prev, selectedExecutives: [] }));
                         }
                       }}
-                      className="mr-2"
+                      className="mr-3"
                     />
-                    <span className="font-medium text-sm">Select All</span>
+                    <span className="font-medium text-xm">Select All</span>
                   </label>
                   {executiveOptions.map(exec => (
-                    <label key={exec} className="flex items-center mb-1">
+                    <label key={exec} className="flex items-center mb-2">
                       <input
                         type="checkbox"
                         checked={filters.selectedExecutives.includes(exec)}
@@ -640,9 +640,9 @@ const ExecutiveBudgetVsBilled = () => {
                             }));
                           }
                         }}
-                        className="mr-2"
+                        className="mr-3"
                       />
-                      <span className="text-xs">{exec}</span>
+                      <span className="text-xm">{exec}</span>
                     </label>
                   ))}
                 </div>
@@ -652,11 +652,11 @@ const ExecutiveBudgetVsBilled = () => {
             {/* Branch Filter */}
             {branchOptions.length > 0 && (
               <div>
-                <label className="block font-semibold mb-2">
+                <label className="block font-semibold mb-3">
                   Branches ({filters.selectedBranches.length} of {branchOptions.length})
                 </label>
-                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                  <label className="flex items-center mb-2">
+                <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+                  <label className="flex items-center mb-3">
                     <input
                       type="checkbox"
                       checked={filters.selectedBranches.length === branchOptions.length}
@@ -667,12 +667,12 @@ const ExecutiveBudgetVsBilled = () => {
                           setFilters(prev => ({ ...prev, selectedBranches: [] }));
                         }
                       }}
-                      className="mr-2"
+                      className="mr-3"
                     />
-                    <span className="font-medium text-sm">Select All</span>
+                    <span className="font-medium text-xm">Select All</span>
                   </label>
                   {branchOptions.map(branch => (
-                    <label key={branch} className="flex items-center mb-1">
+                    <label key={branch} className="flex items-center mb-2">
                       <input
                         type="checkbox"
                         checked={filters.selectedBranches.includes(branch)}
@@ -689,9 +689,9 @@ const ExecutiveBudgetVsBilled = () => {
                             }));
                           }
                         }}
-                        className="mr-2"
+                        className="mr-3"
                       />
-                      <span className="text-xs">{branch}</span>
+                      <span className="text-xm">{branch}</span>
                     </label>
                   ))}
                 </div>
@@ -701,11 +701,11 @@ const ExecutiveBudgetVsBilled = () => {
             {/* Month Filter */}
             {monthOptions.length > 0 && (
               <div>
-                <label className="block font-semibold mb-2">
+                <label className="block font-semibold mb-3">
                   Months ({filters.selectedMonths.length} of {monthOptions.length})
                 </label>
-                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                  <label className="flex items-center mb-2">
+                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-3">
+                  <label className="flex items-center mb-3">
                     <input
                       type="checkbox"
                       checked={filters.selectedMonths.length === monthOptions.length}
@@ -716,12 +716,12 @@ const ExecutiveBudgetVsBilled = () => {
                           setFilters(prev => ({ ...prev, selectedMonths: [] }));
                         }
                       }}
-                      className="mr-2"
+                      className="mr-3"
                     />
-                    <span className="font-medium text-sm">Select All</span>
+                    <span className="font-medium text-xm">Select All</span>
                   </label>
                   {monthOptions.map(month => (
-                    <label key={month} className="flex items-center mb-1">
+                    <label key={month} className="flex items-center mb-3">
                       <input
                         type="checkbox"
                         checked={filters.selectedMonths.includes(month)}
@@ -738,9 +738,9 @@ const ExecutiveBudgetVsBilled = () => {
                             }));
                           }
                         }}
-                        className="mr-2"
+                        className="mr-3"
                       />
-                      <span className="text-xs">{month}</span>
+                      <span className="text-xm">{month}</span>
                     </label>
                   ))}
                 </div>
@@ -755,7 +755,7 @@ const ExecutiveBudgetVsBilled = () => {
         <button
           onClick={handleCalculate}
           disabled={loading || !salesColumns.length || !targetColumns.length}
-          className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 disabled:bg-gray-400"
         >
           {loading ? 'Calculating...' : 'Calculate Executive Target vs Billed'}
         </button>
@@ -776,7 +776,7 @@ const ExecutiveBudgetVsBilled = () => {
             <button
               onClick={handleDownloadPpt}
               disabled={downloadingPpt || !results}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
             >
               {downloadingPpt ? (
                 <>
@@ -793,7 +793,7 @@ const ExecutiveBudgetVsBilled = () => {
             <button
               onClick={handleDownloadProof}
               disabled={downloadingProof || !results}
-              className="bg-orange-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              className="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 disabled:bg-gray-400"
             >
               {downloadingProof ? (
                 <>
