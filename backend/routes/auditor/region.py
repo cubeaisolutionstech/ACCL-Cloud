@@ -40,6 +40,73 @@ def handle_duplicate_columns(df):
     df.columns = cols
     return df
 
+def detect_budget_sheet_header_row(filepath, sheet_name):
+    """
+    Detect the correct header row for budget sheet by checking for expected columns
+    Returns the appropriate header row number (0 or 1)
+    """
+    try:
+        # Expected column patterns for budget data
+        expected_patterns = [
+            # Region identifiers
+            ['Branch', 'Region', 'REGIONS'],
+            # Budget column patterns
+            ['Qty', 'Value', 'Budget'],
+            # Month patterns
+            ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+        ]
+        
+        # Try header=0 first
+        try:
+            df_test_0 = pd.read_excel(filepath, sheet_name=sheet_name, header=0, nrows=5)
+            df_test_0.columns = df_test_0.columns.str.strip()
+            
+            # Check if we can find expected columns in row 0
+            found_patterns_0 = 0
+            for pattern_group in expected_patterns:
+                for pattern in pattern_group:
+                    if find_column(df_test_0, pattern, threshold=70):
+                        found_patterns_0 += 1
+                        break
+            
+            # If we found at least 2 pattern groups, row 0 is likely correct
+            if found_patterns_0 >= 2:
+                print(f"Budget sheet: Using header row 0 (found {found_patterns_0} pattern matches)")
+                return 0
+                
+        except Exception as e:
+            print(f"Error testing header=0: {e}")
+        
+        # Try header=1 if row 0 didn't work well
+        try:
+            df_test_1 = pd.read_excel(filepath, sheet_name=sheet_name, header=1, nrows=5)
+            df_test_1.columns = df_test_1.columns.str.strip()
+            
+            # Check if we can find expected columns in row 1
+            found_patterns_1 = 0
+            for pattern_group in expected_patterns:
+                for pattern in pattern_group:
+                    if find_column(df_test_1, pattern, threshold=70):
+                        found_patterns_1 += 1
+                        break
+            
+            print(f"Budget sheet: Comparing row 0 ({found_patterns_0} matches) vs row 1 ({found_patterns_1} matches)")
+            
+            # Use row 1 if it has more matches, otherwise default to row 0
+            if found_patterns_1 > found_patterns_0:
+                print(f"Budget sheet: Using header row 1 (found {found_patterns_1} pattern matches)")
+                return 1
+                
+        except Exception as e:
+            print(f"Error testing header=1: {e}")
+        
+        # Default to row 0 if both fail or row 0 is equal/better
+        print("Budget sheet: Defaulting to header row 0")
+        return 0
+        
+    except Exception as e:
+        print(f"Error in header detection: {e}")
+        return 0
 def extract_tables_from_auditor(df, headers):
     """Extract table data from auditor format"""
     table_idx = None
@@ -467,6 +534,7 @@ def process_sales_data_for_year(filepath, sheet_name, is_last_year=False, data_t
         return {}
 
 # Updated process_sales_data_for_year function with proper blank handling
+# Modified section in the main processing function
 @region_bp.route('/process-region-analysis', methods=['POST'])
 def process_region_analysis():
     """Process region analysis using existing uploaded files from main app"""
@@ -485,8 +553,6 @@ def process_region_analysis():
         selected_sales_sheet = data.get('selected_sales_sheet')
         selected_budget_sheet = data.get('selected_budget_sheet')
         selected_total_sales_sheet = data.get('selected_total_sales_sheet')
-        
-        
         
         if not sales_filepath or not budget_filepath:
             return jsonify({
@@ -513,8 +579,6 @@ def process_region_analysis():
                 'error': f'Budget file not found: {budget_filepath}'
             }), 404
         
-    
-        
         # Get current date and determine fiscal year
         current_date = datetime.now()
         current_year = current_date.year
@@ -529,17 +593,24 @@ def process_region_analysis():
         last_fiscal_year_start = fiscal_year_start - 1
         last_fiscal_year_end = fiscal_year_end - 1
         
-        
-        
         months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
         
-    
+        # MODIFIED BUDGET PROCESSING WITH DYNAMIC HEADER DETECTION
+        print("=== DEBUG: Processing budget data with header detection ===")
         
-        # Process budget data
+        # Detect correct header row for budget sheet
+        budget_header_row = detect_budget_sheet_header_row(budget_filepath, selected_budget_sheet)
+        print(f"Using header row {budget_header_row} for budget sheet")
+        
+        # Process budget data with detected header row
         xls_budget = pd.ExcelFile(budget_filepath)
-        df_budget = pd.read_excel(xls_budget, sheet_name=selected_budget_sheet)
+        df_budget = pd.read_excel(xls_budget, sheet_name=selected_budget_sheet, header=budget_header_row)
         df_budget.columns = df_budget.columns.str.strip()
         df_budget = df_budget.dropna(how='all').reset_index(drop=True)
+        
+        # Debug: Print first few columns to verify header detection
+        print(f"Budget sheet columns after header detection: {df_budget.columns.tolist()[:10]}")
+        print(f"Budget sheet shape: {df_budget.shape}")
         
         budget_data = process_budget_data(df_budget, group_type='region')
         if budget_data is None:
@@ -547,6 +618,8 @@ def process_region_analysis():
                 'success': False,
                 'error': 'Failed to process budget data for regions - no valid budget columns found'
             }), 400
+        
+        print(f"Budget data processed successfully. Columns: {budget_data.columns.tolist()}")
         
         # Process MT data
         mt_cols = [col for col in budget_data.columns if col.endswith('_MT')]
@@ -911,6 +984,10 @@ def process_region_analysis():
             }
         }
         
+        print("=== DEBUG: Processing completed successfully ===")
+        print(f"MT data rows: {len(result_data['mt_data'])}")
+        print(f"Value data rows: {len(result_data['value_data'])}")
+        
         return jsonify({
             'success': True,
             'data': result_data
@@ -924,6 +1001,33 @@ def process_region_analysis():
             'success': False,
             'error': f'Processing error: {str(e)}'
         }), 500
+# Additional helper function to validate budget data structure
+def validate_budget_data_structure(df, expected_identifier_col='REGIONS'):
+    """
+    Validate that the budget data has the expected structure
+    Returns True if valid, False otherwise
+    """
+    try:
+        # Check if we have the identifier column
+        identifier_col = find_column(df, ['Branch', 'Region', 'REGIONS'], threshold=70)
+        if not identifier_col:
+            print("No valid identifier column found in budget data")
+            return False
+        
+        # Check if we have budget-related columns
+        budget_cols = [col for col in df.columns if any(keyword in str(col).upper() 
+                      for keyword in ['QTY', 'VALUE', 'BUDGET', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN', 'FEB', 'MAR'])]
+        
+        if len(budget_cols) < 3:  # Should have at least a few budget columns
+            print(f"Insufficient budget columns found: {len(budget_cols)}")
+            return False
+        
+        print(f"Budget data validation passed: identifier='{identifier_col}', budget_cols={len(budget_cols)}")
+        return True
+        
+    except Exception as e:
+        print(f"Error validating budget data structure: {e}")
+        return False
    
 # Add this new endpoint to your existing region.py file
 
