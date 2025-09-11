@@ -49,7 +49,7 @@ const ExecutiveODC = () => {
   // Fetch available sheet names from backend
   const fetchSheets = async (filename, setter) => {
     try {
-      const res = await axios.post('/api/branch/sheets', { filename });
+      const res = await axios.post('http://localhost:5000/api/branch/sheets', { filename });
       setter(res.data.sheets);
     } catch (error) {
       console.error('Error fetching sheets:', error);
@@ -72,7 +72,7 @@ const ExecutiveODC = () => {
 
     try {
       const getCols = async (filename, sheet_name, header) => {
-        const res = await axios.post('/api/branch/get_columns', {
+        const res = await axios.post('http://localhost:5000/api/branch/get_columns', {
           filename,
           sheet_name,
           header
@@ -91,7 +91,7 @@ const ExecutiveODC = () => {
       setSalesColumns(salesCols);
 
       // Use OD auto-mapping endpoint
-      const res = await axios.post('/api/executive/od_auto_map_columns', {
+      const res = await axios.post('http://localhost:5000/api/executive/od_auto_map_columns', {
         os_jan_file_path: `uploads/${selectedFiles.osPrevFile}`,
         os_feb_file_path: `uploads/${selectedFiles.osCurrFile}`,
         sales_file_path: `uploads/${selectedFiles.salesFile}`
@@ -125,7 +125,7 @@ const ExecutiveODC = () => {
 
   const fetchExecAndBranches = async () => {
     try {
-      const res = await axios.post('/api/executive/od_get_exec_branch_options', {
+      const res = await axios.post('http://localhost:5000/api/executive/od_get_exec_branch_options', {
         os_jan_file_path: `uploads/${selectedFiles.osPrevFile}`,
         os_feb_file_path: `uploads/${selectedFiles.osCurrFile}`,
         sales_file_path: `uploads/${selectedFiles.salesFile}`
@@ -160,7 +160,7 @@ const ExecutiveODC = () => {
 
   const fetchMonths = async () => {
     try {
-      const res = await axios.post('/api/executive/od_get_available_months', {
+      const res = await axios.post('http://localhost:5000/api/executive/od_get_available_months', {
         os_jan_file_path: `uploads/${selectedFiles.osPrevFile}`,
         os_feb_file_path: `uploads/${selectedFiles.osCurrFile}`,
         sales_file_path: `uploads/${selectedFiles.salesFile}`
@@ -284,7 +284,7 @@ const ExecutiveODC = () => {
 
       console.log('OD vs Collection calculate payload:', payload);
 
-      const res = await axios.post('/api/executive/calculate_od_vs_collection', payload);
+      const res = await axios.post('http://localhost:5000/api/executive/calculate_od_vs_collection', payload);
       
       if (res.data.success) {
         setResults(res.data);
@@ -329,7 +329,7 @@ const ExecutiveODC = () => {
 
       console.log('OD PPT generation payload:', payload);
 
-      const response = await axios.post('/api/executive/generate_od_ppt', payload, {
+      const response = await axios.post('http://localhost:5000/api/executive/generate_od_ppt', payload, {
         responseType: 'blob',
         headers: {
           'Content-Type': 'application/json',
@@ -442,7 +442,7 @@ const ExecutiveODC = () => {
         </div>
 
         <button
-          className="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
+          className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400" 
           onClick={fetchColumns}
           disabled={!osJanSheet || !osFebSheet || !salesSheet || loading}
         >
@@ -574,7 +574,7 @@ const ExecutiveODC = () => {
             {/* Month Filter */}
             {monthOptions.length > 0 && (
               <div>
-                <label className="block font-semibold mb-2">
+                <label className="block font-semibold mb-3">
                   Select Month
                 </label>
                 <select
@@ -595,7 +595,7 @@ const ExecutiveODC = () => {
             {/* Executive Filter */}
             {executiveOptions.length > 0 && (
               <div>
-                <label className="block font-semibold mb-2">
+                <label className="block font-semibold mb-3">
                   Executives ({filters.selectedExecutives.length} of {executiveOptions.length})
                 </label>
                 <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
@@ -610,12 +610,12 @@ const ExecutiveODC = () => {
                           setFilters(prev => ({ ...prev, selectedExecutives: [] }));
                         }
                       }}
-                      className="mr-2"
+                      className="mr-3"
                     />
-                    <span className="font-medium text-sm">Select All</span>
+                    <span className="font-medium text-xm">Select All</span>
                   </label>
                   {executiveOptions.map(exec => (
-                    <label key={exec} className="flex items-center mb-1">
+                    <label key={exec} className="flex items-center mb-2">
                       <input
                         type="checkbox"
                         checked={filters.selectedExecutives.includes(exec)}
@@ -632,9 +632,9 @@ const ExecutiveODC = () => {
                             }));
                           }
                         }}
-                        className="mr-2"
+                        className="mr-3"
                       />
-                      <span className="text-xs">{exec}</span>
+                      <span className="text-xm">{exec}</span>
                     </label>
                   ))}
                 </div>
@@ -644,11 +644,11 @@ const ExecutiveODC = () => {
             {/* Branch Filter */}
             {branchOptions.length > 0 && (
               <div>
-                <label className="block font-semibold mb-2">
+                <label className="block font-semibold mb-3">
                   Branches ({filters.selectedBranches.length} of {branchOptions.length})
                 </label>
                 <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                  <label className="flex items-center mb-2">
+                  <label className="flex items-center mb-3">
                     <input
                       type="checkbox"
                       checked={filters.selectedBranches.length === branchOptions.length}
@@ -659,12 +659,12 @@ const ExecutiveODC = () => {
                           setFilters(prev => ({ ...prev, selectedBranches: [] }));
                         }
                       }}
-                      className="mr-2"
+                      className="mr-3"
                     />
-                    <span className="font-medium text-sm">Select All</span>
+                    <span className="font-medium text-xm">Select All</span>
                   </label>
                   {branchOptions.map(branch => (
-                    <label key={branch} className="flex items-center mb-1">
+                    <label key={branch} className="flex items-center mb-2">
                       <input
                         type="checkbox"
                         checked={filters.selectedBranches.includes(branch)}
@@ -681,9 +681,9 @@ const ExecutiveODC = () => {
                             }));
                           }
                         }}
-                        className="mr-2"
+                        className="mr-3"
                       />
-                      <span className="text-xs">{branch}</span>
+                      <span className="text-xm">{branch}</span>
                     </label>
                   ))}
                 </div>
@@ -698,7 +698,7 @@ const ExecutiveODC = () => {
         <button
           onClick={handleCalculate}
           disabled={loading || !osJanColumns.length || !osFebColumns.length || !salesColumns.length}
-          className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="bg-red-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
         >
           {loading ? 'Calculating...' : 'Calculate OD Target vs Collection'}
         </button>
@@ -719,7 +719,7 @@ const ExecutiveODC = () => {
             <button
               onClick={handleDownloadPpt}
               disabled={downloadingPpt || !results}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700"
             >
               {downloadingPpt ? 'Generating PPT...' : 'Download PowerPoint'}
             </button>
