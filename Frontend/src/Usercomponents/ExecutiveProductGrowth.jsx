@@ -271,7 +271,7 @@ const ExecutiveProductGrowth = () => {
 
  const handleCalculate = async () => {
    if (!selectedFiles.lastYearSalesFile || !selectedFiles.salesFile || !selectedFiles.budgetFile) {
-     setError('Please upload all three files (Last Year Sales, Current Year Sales, and Budget)');
+     setError('Please upload all three files (Last Year Sales, Current Year Sales, and Target)');
      return;
    }
 
@@ -301,7 +301,7 @@ const ExecutiveProductGrowth = () => {
    }
    
    if (missingBudgetColumns.length > 0) {
-     setError(`Missing required Budget column mappings: ${missingBudgetColumns.join(', ')}`);
+     setError(`Missing required Target column mappings: ${missingBudgetColumns.join(', ')}`);
      return;
    }
 
@@ -445,8 +445,8 @@ const ExecutiveProductGrowth = () => {
 
    // Define the correct column order for display with ORIGINAL DATA KEYS
    // We keep the original keys but display different labels
-   const qtyColumnOrder = ['PRODUCT GROUP', 'LY_QTY', 'BUDGET_QTY', 'CY_QTY', 'ACHIEVEMENT %'];
-   const valueColumnOrder = ['PRODUCT GROUP', 'LY_VALUE', 'BUDGET_VALUE', 'CY_VALUE', 'ACHIEVEMENT %'];
+   const qtyColumnOrder = ['PRODUCT GROUP', 'LY_QTY', 'TARGET_QTY', 'CY_QTY', 'ACHIEVEMENT %'];
+   const valueColumnOrder = ['PRODUCT GROUP', 'LY_VALUE', 'TARGET_VALUE', 'CY_VALUE', 'ACHIEVEMENT %'];
 
    // Create display label mapping
    const getDisplayLabel = (col) => {
@@ -608,7 +608,7 @@ const ExecutiveProductGrowth = () => {
            />
          </div>
          <div>
-           <label className="block font-semibold mb-2">Budget Sheet</label>
+           <label className="block font-semibold mb-2">Target Sheet</label>
            <select 
              className="w-full p-2 border border-gray-300 rounded" 
              value={budgetSheet} 
@@ -617,7 +617,7 @@ const ExecutiveProductGrowth = () => {
              <option value="">Select Sheet</option>
              {budgetSheets.map(sheet => <option key={sheet} value={sheet}>{sheet}</option>)}
            </select>
-           <label className="block mt-4 font-semibold mb-2">Budget Header Row</label>
+           <label className="block mt-4 font-semibold mb-2">Target Header Row</label>
            <input 
              type="number" 
              className="w-full p-2 border border-gray-300 rounded" 
@@ -716,7 +716,7 @@ const ExecutiveProductGrowth = () => {
 
          {/* Budget Columns */}
          <div>
-           <h4 className="text-md font-semibold text-gray-700 mb-3">Budget Columns</h4>
+           <h4 className="text-md font-semibold text-gray-700 mb-3"> Target Columns</h4>
            <div className="grid grid-cols-3 gap-4">
              {[
                { key: 'quantity', label: 'Quantity *', required: true },
