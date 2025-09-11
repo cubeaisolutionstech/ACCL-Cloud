@@ -605,6 +605,96 @@ def process_sales_data(df_sales, fiscal_year_start, months):
     except Exception as e:
         print(f"Error processing sales data: {str(e)}")
         return None, None
+def read_budget_sheet_with_smart_header(budget_filepath, budget_sheet):
+    """
+    Read budget sheet with intelligent header detection.
+    Tries header=0 first, then header=1 if expected columns not found.
+    """
+    try:
+        xls_budget = pd.ExcelFile(budget_filepath)
+        
+        # Expected column patterns for budget sheets
+        expected_product_names = ['Product', 'Product Group', 'PRODUCT NAME', 'PRODUCT_NAME']
+        expected_region_names = ['Region', 'Branch', 'REGIONS', 'REGION']
+        expected_budget_patterns = ['Qty-', 'Value-', 'Budget-', 'Qty ', 'Value ']
+        
+        def check_columns_present(df):
+            """Check if expected columns are present in the dataframe"""
+            if df is None or df.empty:
+                return False
+            
+            columns_str = ' '.join([str(col).upper() for col in df.columns if pd.notna(col)])
+            
+            # Check for product column
+            product_found = any(name.upper() in columns_str for name in expected_product_names)
+            
+            # Check for region column  
+            region_found = any(name.upper() in columns_str for name in expected_region_names)
+            
+            # Check for budget-related columns
+            budget_found = any(pattern.upper() in columns_str for pattern in expected_budget_patterns)
+            
+            current_app.logger.info(f"Column check - Product: {product_found}, Region: {region_found}, Budget: {budget_found}")
+            current_app.logger.info(f"Available columns: {list(df.columns)}")
+            
+            # Need at least product and either region or budget columns
+            return product_found and (region_found or budget_found)
+        
+        # Try header=0 first
+        current_app.logger.info("Attempting to read budget sheet with header=0")
+        try:
+            df_budget = pd.read_excel(xls_budget, sheet_name=budget_sheet, header=0)
+            df_budget.columns = df_budget.columns.str.strip()
+            df_budget = df_budget.dropna(how='all').reset_index(drop=True)
+            
+            if check_columns_present(df_budget):
+                current_app.logger.info("SUCCESS: Found expected columns with header=0")
+                return df_budget, 0
+            else:
+                current_app.logger.info("Expected columns not found with header=0, trying header=1")
+        except Exception as e:
+            current_app.logger.warning(f"Error reading with header=0: {str(e)}")
+        
+        # Try header=1 if header=0 didn't work
+        current_app.logger.info("Attempting to read budget sheet with header=1")
+        try:
+            df_budget = pd.read_excel(xls_budget, sheet_name=budget_sheet, header=1)
+            df_budget.columns = df_budget.columns.str.strip()
+            df_budget = df_budget.dropna(how='all').reset_index(drop=True)
+            
+            if check_columns_present(df_budget):
+                current_app.logger.info("SUCCESS: Found expected columns with header=1")
+                return df_budget, 1
+            else:
+                current_app.logger.info("Expected columns not found with header=1, trying header=2")
+        except Exception as e:
+            current_app.logger.warning(f"Error reading with header=1: {str(e)}")
+        
+        # Try header=2 as final attempt
+        current_app.logger.info("Attempting to read budget sheet with header=2")
+        try:
+            df_budget = pd.read_excel(xls_budget, sheet_name=budget_sheet, header=2)
+            df_budget.columns = df_budget.columns.str.strip()
+            df_budget = df_budget.dropna(how='all').reset_index(drop=True)
+            
+            if check_columns_present(df_budget):
+                current_app.logger.info("SUCCESS: Found expected columns with header=2")
+                return df_budget, 2
+            else:
+                current_app.logger.warning("Expected columns not found even with header=2")
+        except Exception as e:
+            current_app.logger.warning(f"Error reading with header=2: {str(e)}")
+        
+        # If all header attempts failed, return the last attempt anyway
+        current_app.logger.warning("All header detection attempts failed, returning header=0 data anyway")
+        df_budget = pd.read_excel(xls_budget, sheet_name=budget_sheet, header=0)
+        df_budget.columns = df_budget.columns.str.strip()
+        df_budget = df_budget.dropna(how='all').reset_index(drop=True)
+        return df_budget, 0
+        
+    except Exception as e:
+        current_app.logger.error(f"Critical error in smart header detection: {str(e)}")
+        raise
 
 
 def build_exact_columns_and_calculate_values(data_df, fiscal_info, analysis_type='mt'):
@@ -893,7 +983,7 @@ def build_exact_columns_and_calculate_values(data_df, fiscal_info, analysis_type
 # Main ERO-PW Analysis Processing Endpoint
 @ero_pw_bp.route('/process-ero-pw', methods=['POST'])
 def process_ero_pw_analysis():
-    """Process ERO-PW data analysis - CORRECTED with proper LY data logic"""
+    """Process ERO-PW data analysis - UPDATED with smart header detection"""
     try:
         data = request.json
         budget_filepath = data.get('budget_filepath')
@@ -913,18 +1003,27 @@ def process_ero_pw_analysis():
         fiscal_info = ero_pw_merge_processor.fiscal_info
         months = ero_pw_merge_processor.months
         
-        # Process budget data (using original function - no changes to budget processing)
-        xls_budget = pd.ExcelFile(budget_filepath)
-        df_budget = pd.read_excel(xls_budget, sheet_name=budget_sheet)
-        df_budget.columns = df_budget.columns.str.strip()
-        df_budget = df_budget.dropna(how='all').reset_index(drop=True)
+        # ========== UPDATED: Smart header detection for budget data ==========
+        current_app.logger.info("Starting smart header detection for budget sheet")
         
+        try:
+            df_budget, header_used = read_budget_sheet_with_smart_header(budget_filepath, budget_sheet)
+            current_app.logger.info(f"Budget sheet read successfully using header={header_used}")
+        except Exception as e:
+            current_app.logger.error(f"Failed to read budget sheet: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to read budget sheet: {str(e)}'
+            }), 400
+        
+        # Process budget data
         budget_data = process_budget_data_product_region(df_budget, group_type='product_region')
         
         if isinstance(budget_data, dict) and 'error' in budget_data:
             return jsonify({
                 'success': False,
-                'error': budget_data['error']
+                'error': budget_data['error'],
+                'budget_header_info': f'Tried header={header_used}'
             }), 400
         
         # Filter for WEST region (but will remove Region column later)
@@ -933,7 +1032,8 @@ def process_ero_pw_analysis():
             if budget_data.empty:
                 return jsonify({
                     'success': False,
-                    'error': 'No data found for WEST region.'
+                    'error': 'No data found for WEST region.',
+                    'budget_header_info': f'Used header={header_used}'
                 }), 400
         
         # Extract all products
@@ -1434,6 +1534,11 @@ def process_ero_pw_analysis():
                     'mt': mt_columns,
                     'value': value_columns
                 },
+                'budget_processing_info': {
+                    'header_used': header_used,
+                    'method': 'smart_header_detection',
+                    'description': f'Successfully read budget sheet using header={header_used}'
+                },
                 'ly_processing_info': {
                     'method_used': ly_processing_method,
                     'mt_ly_records': total_ly_mt_records,
@@ -1461,7 +1566,6 @@ def process_ero_pw_analysis():
             'error': str(e)
         }), 500
     
-
 def remove_specific_unwanted_columns_fixed(df, product_col_name):
     """Remove Region column, budget range columns like Budget-April24dec-24, AND duplicate YTD Budget col"""
     
