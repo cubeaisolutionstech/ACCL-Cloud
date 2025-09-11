@@ -337,6 +337,113 @@ class TSPWMergePreviewProcessor:
 # Initialize the processor
 ts_pw_merge_processor = TSPWMergePreviewProcessor()
 
+def read_budget_with_flexible_headers_tspw(budget_filepath, budget_sheet):
+    """
+    Read budget Excel file with flexible header detection for TS-PW.
+    Tries row=0 first, if expected columns not found, tries row=1.
+    """
+    
+    def check_tspw_budget_columns_exist(df):
+        """Check if budget DataFrame has expected column patterns for TS-PW"""
+        if df is None or df.empty:
+            return False, "DataFrame is empty"
+        
+        # Look for Product/Product Group column
+        product_names = ['Product', 'Product Group', 'PRODUCT NAME']
+        product_col_found = False
+        
+        for col in df.columns:
+            for name in product_names:
+                if name.lower() in str(col).lower():
+                    product_col_found = True
+                    break
+            if product_col_found:
+                break
+        
+        if not product_col_found:
+            return False, "No Product/Product Group column found"
+        
+        # Look for Region/Branch column
+        region_names = ['Region', 'Branch', 'REGIONS']
+        region_col_found = False
+        
+        for col in df.columns:
+            for name in region_names:
+                if name.lower() in str(col).lower():
+                    region_col_found = True
+                    break
+            if region_col_found:
+                break
+        
+        if not region_col_found:
+            return False, "No Region/Branch column found"
+        
+        # Check for budget data columns (Qty or Value patterns)
+        budget_pattern_found = False
+        detailed_pattern = r'^(Qty|Value)\s*[-]\s*(\w{3,})\'?(\d{2,4})'
+        range_pattern = r'^(Qty|Value)\s*(\w{3,})\'?(\d{2,4})[-]\s*(\w{3,})\'?(\d{2,4})'
+        
+        for col in df.columns:
+            col_str = str(col).strip()
+            if re.match(detailed_pattern, col_str, re.IGNORECASE) or \
+               re.match(range_pattern, col_str, re.IGNORECASE):
+                budget_pattern_found = True
+                break
+        
+        if not budget_pattern_found:
+            return False, "No budget data columns (Qty/Value pattern) found"
+        
+        return True, "Expected TS-PW columns found"
+    
+    try:
+        current_app.logger.info(f"Attempting to read TS-PW budget file: {budget_filepath}, sheet: {budget_sheet}")
+        
+        # First attempt: Try header=0 (first row as headers)
+        try:
+            budget_df_row0 = pd.read_excel(budget_filepath, sheet_name=budget_sheet, header=0)
+            budget_df_row0.columns = budget_df_row0.columns.str.strip()
+            budget_df_row0 = budget_df_row0.dropna(how='all').reset_index(drop=True)
+            
+            is_valid_row0, message_row0 = check_tspw_budget_columns_exist(budget_df_row0)
+            
+            if is_valid_row0:
+                current_app.logger.info(f"TS-PW Budget columns found in row 0: {message_row0}")
+                current_app.logger.info(f"Using header=0, columns: {list(budget_df_row0.columns)}")
+                return budget_df_row0, None
+            else:
+                current_app.logger.info(f"TS-PW Row 0 validation failed: {message_row0}")
+        
+        except Exception as e:
+            current_app.logger.warning(f"Error reading TS-PW budget with header=0: {str(e)}")
+        
+        # Second attempt: Try header=1 (second row as headers)
+        try:
+            budget_df_row1 = pd.read_excel(budget_filepath, sheet_name=budget_sheet, header=1)
+            budget_df_row1.columns = budget_df_row1.columns.str.strip()
+            budget_df_row1 = budget_df_row1.dropna(how='all').reset_index(drop=True)
+            
+            is_valid_row1, message_row1 = check_tspw_budget_columns_exist(budget_df_row1)
+            
+            if is_valid_row1:
+                current_app.logger.info(f"TS-PW Budget columns found in row 1: {message_row1}")
+                current_app.logger.info(f"Using header=1, columns: {list(budget_df_row1.columns)}")
+                return budget_df_row1, None
+            else:
+                current_app.logger.info(f"TS-PW Row 1 validation failed: {message_row1}")
+        
+        except Exception as e:
+            current_app.logger.warning(f"Error reading TS-PW budget with header=1: {str(e)}")
+        
+        # If both attempts failed, return error
+        error_msg = f"Could not find expected TS-PW budget columns in row 0 or row 1. Row 0: {message_row0}, Row 1: {message_row1}"
+        current_app.logger.error(error_msg)
+        return None, error_msg
+        
+    except Exception as e:
+        error_msg = f"Error reading TS-PW budget file: {str(e)}"
+        current_app.logger.error(error_msg)
+        return None, error_msg
+
 # Utility functions
 def handle_duplicate_columns(df):
     """Handle duplicate column names by adding suffix"""
@@ -956,7 +1063,7 @@ def remove_specific_unwanted_columns(df, product_col_name):
 
 @ts_pw_bp.route('/process-ts-pw', methods=['POST'])
 def process_ts_pw_analysis():
-    """Process TS-PW data analysis - UPDATED with improved LY data logic"""
+    """Process TS-PW data analysis - UPDATED with flexible budget header reading"""
     try:
         data = request.json
         budget_filepath = data.get('budget_filepath')
@@ -976,11 +1083,13 @@ def process_ts_pw_analysis():
         fiscal_info = ts_pw_merge_processor.fiscal_info
         months = ts_pw_merge_processor.months
         
-        # Process budget data (using original function - no changes to budget processing)
-        xls_budget = pd.ExcelFile(budget_filepath)
-        df_budget = pd.read_excel(xls_budget, sheet_name=budget_sheet)
-        df_budget.columns = df_budget.columns.str.strip()
-        df_budget = df_budget.dropna(how='all').reset_index(drop=True)
+        # *** UPDATED: Use flexible header reading for budget data ***
+        df_budget, read_error = read_budget_with_flexible_headers_tspw(budget_filepath, budget_sheet)
+        if df_budget is None:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to read TS-PW budget file: {read_error}'
+            }), 400
         
         budget_data = process_budget_data_product_region(df_budget, group_type='product_region')
         
@@ -1518,6 +1627,11 @@ def process_ts_pw_analysis():
                     'budget_range_columns_removed': True,
                     'duplicate_ytd_budget_removed': True,
                     'other_budget_columns_kept': True
+                },
+                'budget_header_info': {
+                    'flexible_header_reading': True,
+                    'header_detection': 'Automatic (row 0 or row 1)',
+                    'validation_performed': True
                 }
             }
         })
@@ -2120,7 +2234,8 @@ def export_combined_ts_pw_excel():
                 f"MT Records: {len(mt_data)}",
                 f"Value Records: {len(value_data)}",
                 f"Region: NORTH",
-                f"Analysis Type: Combined TS-PW"
+                f"Analysis Type: Combined TS-PW",
+                f"Budget Header Detection: Flexible (row 0 or row 1)"
             ]
             
             for i, info_line in enumerate(footer_info):
@@ -2144,7 +2259,8 @@ def export_combined_ts_pw_excel():
                 'fiscal_year': fiscal_year,
                 'mt_records': len(mt_data) if mt_data else 0,
                 'value_records': len(value_data) if value_data else 0,
-                'enhanced_formatting': True
+                'enhanced_formatting': True,
+                'budget_header_detection': True
             }
         })
     
@@ -2154,172 +2270,5 @@ def export_combined_ts_pw_excel():
             'success': False,
             'error': str(e)
         }), 500
-
-
-# NEW ENDPOINT: Store TS-PW Session Data
-@ts_pw_bp.route('/store-session-data', methods=['POST'])
-def store_tspw_session_data():
-    """Store TS-PW analysis data in session for Combined Data Manager"""
-    try:
-        data = request.json
-        session_data = data.get('session_data', {})
-        session_id = data.get('session_id', f"tspw_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-        
-        # Store in a simple in-memory cache or database
-        # For now, we'll return success assuming frontend handles storage
-        
-        return jsonify({
-            'success': True,
-            'session_id': session_id,
-            'message': 'TS-PW session data stored successfully',
-            'stored_data': {
-                'mt_records': len(session_data.get('mt_data', [])),
-                'value_records': len(session_data.get('value_data', [])),
-                'fiscal_year': session_data.get('fiscal_year', ''),
-                'timestamp': datetime.now().isoformat()
-            }
-        })
-    
-    except Exception as e:
-        current_app.logger.error(f"Error storing TS-PW session data: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
