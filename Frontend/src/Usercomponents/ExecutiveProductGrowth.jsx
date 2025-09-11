@@ -53,7 +53,7 @@ const ExecutiveProductGrowth = () => {
  // Fetch available sheet names from backend
  const fetchSheets = async (filename, setter) => {
    try {
-     const res = await axios.post('/api/branch/sheets', { filename });
+     const res = await axios.post('http://localhost:5000/api/branch/sheets', { filename });
      setter(res.data.sheets);
    } catch (error) {
      console.error('Error fetching sheets:', error);
@@ -76,7 +76,7 @@ const ExecutiveProductGrowth = () => {
 
    try {
      const getCols = async (filename, sheet_name, header) => {
-       const res = await axios.post('/api/branch/get_columns', {
+       const res = await axios.post('http://localhost:5000/api/branch/get_columns', {
          filename,
          sheet_name,
          header
@@ -95,7 +95,7 @@ const ExecutiveProductGrowth = () => {
      setBudgetColumns(budgetCols);
 
      // Use Product Growth auto-mapping endpoint
-     const res = await axios.post('/api/executive/product_auto_map_columns', {
+     const res = await axios.post('http://localhost:5000/api/executive/product_auto_map_columns', {
        ly_file_path: `uploads/${selectedFiles.lastYearSalesFile}`,
        cy_file_path: `uploads/${selectedFiles.salesFile}`,
        budget_file_path: `uploads/${selectedFiles.budgetFile}`
@@ -128,7 +128,7 @@ const ExecutiveProductGrowth = () => {
 
  const fetchOptions = async () => {
    try {
-     const res = await axios.post('/api/executive/product_get_options', {
+     const res = await axios.post('http://localhost:5000/api/executive/product_get_options', {
        ly_file_path: `uploads/${selectedFiles.lastYearSalesFile}`,
        cy_file_path: `uploads/${selectedFiles.salesFile}`,
        budget_file_path: `uploads/${selectedFiles.budgetFile}`
@@ -350,7 +350,7 @@ const ExecutiveProductGrowth = () => {
 
      console.log('Product Growth calculate payload:', payload);
 
-     const res = await axios.post('/api/executive/calculate_product_growth', payload);
+     const res = await axios.post('http://localhost:5000/api/executive/calculate_product_growth', payload);
      
      console.log('Raw response from server:', res.data);
      
@@ -405,7 +405,7 @@ const ExecutiveProductGrowth = () => {
 
      console.log('PPT generation payload:', payload);
 
-     const response = await axios.post('/api/executive/generate_product_growth_ppt', payload, {
+     const response = await axios.post('http://localhost:5000/api/executive/generate_product_growth_ppt', payload, {
        responseType: 'blob', // Important for file download
        headers: {
          'Content-Type': 'application/json',
