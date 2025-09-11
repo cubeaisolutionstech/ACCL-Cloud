@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-// import axios from 'axios';  // <-- 1. REMOVED THIS LINE
+import axios from 'axios';
 import api from "../api/axios";
 import CustomerManager from "./CustomerManager";
 
@@ -11,8 +11,7 @@ const ExecutiveManagement = () => {
   const [selectedRemove, setSelectedRemove] = useState("");
 
   const fetchExecutives = async () => {
-    // 2. CHANGED `axios.get` to `api.get` to use the correct configured instance
-    const res = await api.get("/executives-with-counts"); 
+    const res = await axios.get("http://localhost:5000/api/executives-with-counts") // custom endpoint with customer + branch count
     setExecutives(res.data);
   };
 
@@ -118,8 +117,8 @@ const ExecutiveManagement = () => {
       )}
 
       {activeTab === "customers" && (
-        <CustomerManager />
-      )}
+  <CustomerManager />
+)}
     </div>
   );
 };
