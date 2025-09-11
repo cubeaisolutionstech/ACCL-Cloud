@@ -21,7 +21,7 @@ const SidebarUploadPanel = ({ mode, onLogout }) => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post(`/api/${mode}/upload`, formData);
+      const response = await axios.post(`http://localhost:5000/api/${mode}/upload`, formData);
       
       const filename = response.data.filename;
       
@@ -78,8 +78,8 @@ const SidebarUploadPanel = ({ mode, onLogout }) => {
   };
 
   const fileInputs = [
-    { label: 'Current Month Sales Excel File', type: 'sales' },
-    { label: 'Current Year Budget/Executive Target File', type: 'budget' },
+    { label: 'Sales File', type: 'sales' },
+    { label: 'Budget File', type: 'budget' },
     { label: 'OS Previous File', type: 'osPrev' },        // Changed from 'osPrev' to 'osJan'
     { label: 'OS Current File', type: 'osCurr' },         // Changed from 'osCurr' to 'osFeb'
     { label: 'Last Year Sales File', type: 'lastYearSales' },
