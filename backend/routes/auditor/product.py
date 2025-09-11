@@ -436,6 +436,98 @@ class MergePreviewProcessor:
 # Initialize the processor
 merge_processor = MergePreviewProcessor()
 
+def read_budget_with_flexible_headers(budget_filepath, budget_sheet):
+    """
+    Read budget Excel file with flexible header detection.
+    Tries row=0 first, if expected columns not found, tries row=1.
+    """
+    
+    def check_budget_columns_exist(df):
+        """Check if budget DataFrame has expected column patterns"""
+        if df is None or df.empty:
+            return False, "DataFrame is empty"
+        
+        # Look for Product/Product Group column
+        product_names = ['Product', 'Product Group', 'PRODUCT NAME']
+        product_col_found = False
+        
+        for col in df.columns:
+            for name in product_names:
+                if name.lower() in str(col).lower():
+                    product_col_found = True
+                    break
+            if product_col_found:
+                break
+        
+        if not product_col_found:
+            return False, "No Product/Product Group column found"
+        
+        # Check for budget data columns (Qty or Value patterns)
+        budget_pattern_found = False
+        detailed_pattern = r'^(Qty|Value)\s*[-]\s*(\w{3,})\'?(\d{2,4})'
+        range_pattern = r'^(Qty|Value)\s*(\w{3,})\'?(\d{2,4})[-]\s*(\w{3,})\'?(\d{2,4})'
+        
+        for col in df.columns:
+            col_str = str(col).strip()
+            if re.match(detailed_pattern, col_str, re.IGNORECASE) or \
+               re.match(range_pattern, col_str, re.IGNORECASE):
+                budget_pattern_found = True
+                break
+        
+        if not budget_pattern_found:
+            return False, "No budget data columns (Qty/Value pattern) found"
+        
+        return True, "Expected columns found"
+    
+    try:
+        current_app.logger.info(f"Attempting to read budget file: {budget_filepath}, sheet: {budget_sheet}")
+        
+        # First attempt: Try header=0 (first row as headers)
+        try:
+            budget_df_row0 = pd.read_excel(budget_filepath, sheet_name=budget_sheet, header=0)
+            budget_df_row0.columns = budget_df_row0.columns.str.strip()
+            budget_df_row0 = budget_df_row0.dropna(how='all').reset_index(drop=True)
+            
+            is_valid_row0, message_row0 = check_budget_columns_exist(budget_df_row0)
+            
+            if is_valid_row0:
+                current_app.logger.info(f"Budget columns found in row 0: {message_row0}")
+                current_app.logger.info(f"Using header=0, columns: {list(budget_df_row0.columns)}")
+                return budget_df_row0, None
+            else:
+                current_app.logger.info(f"Row 0 validation failed: {message_row0}")
+        
+        except Exception as e:
+            current_app.logger.warning(f"Error reading with header=0: {str(e)}")
+        
+        # Second attempt: Try header=1 (second row as headers)
+        try:
+            budget_df_row1 = pd.read_excel(budget_filepath, sheet_name=budget_sheet, header=1)
+            budget_df_row1.columns = budget_df_row1.columns.str.strip()
+            budget_df_row1 = budget_df_row1.dropna(how='all').reset_index(drop=True)
+            
+            is_valid_row1, message_row1 = check_budget_columns_exist(budget_df_row1)
+            
+            if is_valid_row1:
+                current_app.logger.info(f"Budget columns found in row 1: {message_row1}")
+                current_app.logger.info(f"Using header=1, columns: {list(budget_df_row1.columns)}")
+                return budget_df_row1, None
+            else:
+                current_app.logger.info(f"Row 1 validation failed: {message_row1}")
+        
+        except Exception as e:
+            current_app.logger.warning(f"Error reading with header=1: {str(e)}")
+        
+        # If both attempts failed, return error
+        error_msg = f"Could not find expected budget columns in row 0 or row 1. Row 0: {message_row0}, Row 1: {message_row1}"
+        current_app.logger.error(error_msg)
+        return None, error_msg
+        
+    except Exception as e:
+        error_msg = f"Error reading budget file: {str(e)}"
+        current_app.logger.error(error_msg)
+        return None, error_msg
+
 def build_exact_columns_and_calculate_values(data_df, fiscal_info, analysis_type='mt'):
     """Build exact column structure and calculate all values - ONLY when Act values present"""
     
@@ -1505,10 +1597,10 @@ def process_product_analysis():
         if not budget_filepath or not budget_sheet:
             return jsonify({'success': False, 'error': 'Budget file and sheet are required'})
 
-        # Process budget data
-        budget_df = pd.read_excel(budget_filepath, sheet_name=budget_sheet)
-        budget_df.columns = budget_df.columns.str.strip()
-        budget_df = budget_df.dropna(how='all').reset_index(drop=True)
+        # *** UPDATED: Use flexible header reading for budget data ***
+        budget_df, read_error = read_budget_with_flexible_headers(budget_filepath, budget_sheet)
+        if budget_df is None:
+            return jsonify({'success': False, 'error': f'Failed to read budget file: {read_error}'})
 
         budget_data, error = process_budget_data_product(budget_df, group_type='product')
         if budget_data is None:
@@ -1653,7 +1745,7 @@ def process_product_analysis():
 def process_product_analysis_with_session():
     """Process product analysis with session storage for sales monthwise integration"""
     try:
-        # Call the main process function
+        # Call the main process function (which now uses flexible header reading)
         result = process_product_analysis()
         
         # If successful, store totals in session
