@@ -28,7 +28,7 @@ import EroPwAnalysis from './EroPwAnalysis';
 import SalesAnalysisMonthwise from './SalesAnalysisMonthwise';
 import CombinedExcelManager from './CombinedExcelManager';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 function Auditor() {
 // File state
