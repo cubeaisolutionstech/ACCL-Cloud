@@ -11,6 +11,139 @@ import xlsxwriter
 
 region_bp = Blueprint('region', __name__)
 
+# Enhanced column aliases for comprehensive branch identification
+column_aliases = {
+    'Date': ['Month Format', 'Month', 'Date', 'Period', 'Time Period', 'Month Year'],
+    'Product Name': ['Type(Make)', 'Product Group'],
+    'Value': ['Value', 'Amount'],
+    'Amount': ['Amount', 'Value'],
+    'Branch': [
+        'Branch', 'Branch.1', 'Branch',
+        'Region', 'REGIONS', 'Region',
+        
+    ],
+    'Actual Quantity': [
+        'Actual Quantity', 'Acutal Quantity', 'Quantity', 
+        
+    ]
+}
+
+def create_branch_name_mappings():
+    """Create comprehensive branch name mappings for standardization"""
+    
+    branch_mappings = {
+        # Bangalore variations
+        'BANGALORE': 'BGLR',
+        'BENGALURU': 'BGLR', 
+        'BANG': 'BGLR',
+        'BLR': 'BGLR',
+        'BGLR': 'BGLR',
+        
+        # Chennai variations
+        'CHENNAI': 'CHENNAI',
+        'MADRAS': 'CHENNAI',
+        'CHE': 'CHENNAI',
+        'CHEN': 'CHENNAI',
+        'MAS': 'CHENNAI',
+        
+        # Pondicherry variations
+        'PONDICHERRY': 'PONDY',
+        'PUDUCHERRY': 'PONDY',
+        'PONDY': 'PONDY',
+        'PON': 'PONDY',
+        'PDY': 'PONDY',
+        
+        # Coimbatore variations
+        'COIMBATORE': 'COVAI',
+        'COVAI': 'COVAI',
+        'COI': 'COVAI',
+        'CBE': 'COVAI',
+        'KOVAI': 'COVAI',
+        
+        # Erode variations
+        'ERODE': 'ERODE',
+        'ERD': 'ERODE',
+        'ERODE CITY': 'ERODE',
+        
+        # Madurai variations
+        'MADURAI': 'MADURAI',
+        'MDU': 'MADURAI',
+        'MAD': 'MADURAI',
+        
+        # Poultry variations
+        'POULTRY': 'POULTRY',
+        'POULTRY DIVISION': 'POULTRY',
+        'POULTRY DEPT': 'POULTRY',
+        'POULTRY UNIT': 'POULTRY',
+        'POUL': 'POULTRY',
+        
+        # Karur variations
+        'KARUR': 'KARUR',
+        'KAR': 'KARUR',
+        'KARUR CITY': 'KARUR',
+        
+        # Salem variations
+        'SALEM': 'SALEM',
+        'SAL': 'SALEM',
+        'SALEM CITY': 'SALEM',
+        
+        # Tirupur variations
+        'TIRUPUR': 'TIRUPUR',
+        'TIRRUPUR': 'TIRUPUR',
+        'TUP': 'TIRUPUR',
+        'TPR': 'TIRUPUR',
+        'TIRUPPUR': 'TIRUPUR',
+        
+        # Group company variations
+        'GROUP': 'GROUP',
+        'GROUP COMPANY': 'GROUP',
+        'GROUP COMPANIES': 'GROUP',
+        'HEAD OFFICE': 'GROUP',
+        'HO': 'GROUP',
+        'CORPORATE': 'GROUP',
+        'GROUP SALES': 'GROUP'
+    }
+    
+    return branch_mappings
+
+def normalize_branch_name(branch_name, branch_mappings=None):
+    """
+    Normalize branch name using various mapping strategies
+    """
+    if pd.isna(branch_name) or branch_name == '':
+        return ''
+    
+    # Convert to string and clean
+    clean_name = str(branch_name).strip().upper()
+    
+    # Remove common prefixes/suffixes
+    prefixes_to_remove = ['BRANCH', 'REGION', 'OFFICE', 'DEPOT', 'UNIT', 'DIVISION', 'CENTRE', 'CENTER']
+    suffixes_to_remove = ['BRANCH', 'REGION', 'OFFICE', 'DEPOT', 'UNIT', 'DIVISION', 'CENTRE', 'CENTER']
+    
+    for prefix in prefixes_to_remove:
+        if clean_name.startswith(prefix + ' '):
+            clean_name = clean_name[len(prefix):].strip()
+    
+    for suffix in suffixes_to_remove:
+        if clean_name.endswith(' ' + suffix):
+            clean_name = clean_name[:-len(suffix)].strip()
+    
+    # Use mappings if provided, otherwise use default
+    if branch_mappings is None:
+        branch_mappings = create_branch_name_mappings()
+    
+    # Direct mapping
+    if clean_name in branch_mappings:
+        return branch_mappings[clean_name]
+    
+    # Fuzzy matching for close matches
+    best_match = process.extractOne(clean_name, list(branch_mappings.keys()), score_cutoff=85)
+    if best_match:
+        return branch_mappings[best_match[0]]
+    
+    # Return cleaned name if no mapping found
+    return clean_name
+
 def find_column(df, possible_names, case_sensitive=False, threshold=80):
     """Enhanced fuzzy matching for column names"""
     if isinstance(possible_names, str):
@@ -25,6 +158,32 @@ def find_column(df, possible_names, case_sensitive=False, threshold=80):
                 if col.lower() == name.lower():
                     return col
     
+    for name in possible_names:
+        matches = process.extractOne(name, df.columns, score_cutoff=threshold)
+        if matches:
+            return matches[0]
+    
+    return None
+
+def enhanced_find_column(df, possible_names, case_sensitive=False, threshold=80, exact_match_priority=True):
+    """
+    Enhanced fuzzy matching for column names with priority for exact matches
+    """
+    if isinstance(possible_names, str):
+        possible_names = [possible_names]
+    
+    # First try exact matches
+    if exact_match_priority:
+        for name in possible_names:
+            if case_sensitive:
+                if name in df.columns:
+                    return name
+            else:
+                for col in df.columns:
+                    if col.lower() == name.lower():
+                        return col
+    
+    # Then try fuzzy matching
     for name in possible_names:
         matches = process.extractOne(name, df.columns, score_cutoff=threshold)
         if matches:
@@ -107,6 +266,7 @@ def detect_budget_sheet_header_row(filepath, sheet_name):
     except Exception as e:
         print(f"Error in header detection: {e}")
         return 0
+
 def extract_tables_from_auditor(df, headers):
     """Extract table data from auditor format"""
     table_idx = None
@@ -196,7 +356,11 @@ def process_budget_data(budget_df, group_type='region'):
         rename_dict[col] = f'Budget-{month_year}_Value'
     
     budget_data = budget_data.rename(columns=rename_dict)
-    budget_data[rename_dict[identifier_col]] = budget_data[rename_dict[identifier_col]].str.strip().str.upper()
+    
+    # Enhanced branch name normalization for budget data
+    budget_data[rename_dict[identifier_col]] = budget_data[rename_dict[identifier_col]].apply(
+        lambda x: normalize_branch_name(x) if pd.notna(x) else ''
+    )
     
     return budget_data
 
@@ -209,7 +373,7 @@ def add_regional_totals(df, data_type='MT', fiscal_year_start=None, fiscal_year_
     # Define regional classifications
     north_regions = ['BGLR', 'CHENNAI', 'PONDY']
     west_regions = ['COVAI', 'ERODE', 'MADURAI', 'POULTRY', 'KARUR', 'SALEM', 'TIRUPUR']
-    group_companies = ['GROUP', 'Group']
+    group_companies = ['GROUP']
     
     id_col = 'SALES in MT' if data_type == 'MT' else 'SALES in Value'
     
@@ -262,7 +426,6 @@ def add_regional_totals(df, data_type='MT', fiscal_year_start=None, fiscal_year_
     
     return result_df
 
-
 def add_ytd_calculations_auditor_format(df, data_type='MT', fiscal_year_start=None, fiscal_year_end=None,
                                       last_fiscal_year_start=None, last_fiscal_year_end=None):
     """Add YTD calculations in auditor format with proper column ordering"""
@@ -283,7 +446,7 @@ def add_ytd_calculations_auditor_format(df, data_type='MT', fiscal_year_start=No
     # Define regional groupings
     north_regions = ['BGLR', 'CHENNAI', 'PONDY']
     west_regions = ['COVAI', 'ERODE', 'MADURAI', 'POULTRY', 'KARUR', 'SALEM', 'TIRUPUR']
-    group_companies = ['GROUP', 'Group']
+    group_companies = ['GROUP']
     
     # Create ordered column list starting with region column
     ordered_columns = [id_col]
@@ -412,21 +575,14 @@ def add_ytd_calculations_auditor_format(df, data_type='MT', fiscal_year_start=No
     
     return df_reordered
 
-# Column aliases for dynamic renaming
-column_aliases = {
-    'Date': ['Month Format', 'Month', 'Date'],
-    'Product Name': ['Type(Make)', 'Product Group'],
-    'Value': ['Value',  'Amount'],
-    'Amount': ['Amount', 'Total Amount', 'Sales Amount', 'Value', 'Sales Value'],
-    'Branch': ['Branch.1', 'Branch'],
-    'Actual Quantity': ['Actual Quantity', 'Acutal Quantity', 'Quantity', 'Sales Quantity', 'Qty', 'Volume']
-}
-
 def process_sales_data_for_year(filepath, sheet_name, is_last_year=False, data_type='MT', 
                               fiscal_year_start=None, fiscal_year_end=None,
-                              last_fiscal_year_start=None, last_fiscal_year_end=None):
-    """Process sales data for a specific year and data type with proper fiscal year handling"""
+                              last_fiscal_year_start=None, last_fiscal_year_end=None,
+                              custom_branch_mappings=None):
+    """Enhanced process sales data with comprehensive branch naming"""
     try:
+        print(f"=== Processing {'Last Year' if is_last_year else 'Current Year'} {data_type} Data: {sheet_name} ===")
+        
         # Read and prepare the data
         df_sales = pd.read_excel(filepath, sheet_name=sheet_name, header=0)
         
@@ -435,23 +591,52 @@ def process_sales_data_for_year(filepath, sheet_name, is_last_year=False, data_t
         
         df_sales = handle_duplicate_columns(df_sales)
         
-        # Find required columns
-        branch_col = find_column(df_sales, column_aliases['Branch'], case_sensitive=False)
-        date_col = find_column(df_sales, ['Month Format', 'Date', 'Month'] + column_aliases['Date'], case_sensitive=False)
+        print(f"Initial data shape: {df_sales.shape}")
+        print(f"Available columns: {df_sales.columns.tolist()[:10]}...")
+        
+        # Find required columns using enhanced search
+        branch_col = enhanced_find_column(df_sales, column_aliases['Branch'], case_sensitive=False, threshold=75)
+        date_col = enhanced_find_column(df_sales, column_aliases['Date'], case_sensitive=False, threshold=75)
         
         if data_type == 'MT':
-            value_col = find_column(df_sales, ['Actual Quantity', 'Acutal Quantity'] + column_aliases['Actual Quantity'], case_sensitive=False)
+            value_col = enhanced_find_column(df_sales, column_aliases['Actual Quantity'], case_sensitive=False, threshold=75)
             value_column_name = 'Actual Quantity'
         else:  # Value
-            value_col = find_column(df_sales, ['Amount', 'Value', 'Sales Value'] + column_aliases['Value'], case_sensitive=False)
+            value_col = enhanced_find_column(df_sales, column_aliases['Value'] + column_aliases['Amount'], case_sensitive=False, threshold=75)
             value_column_name = 'Value' if data_type == 'Value' else 'Amount'
         
+        print(f"Detected columns - Branch: {branch_col}, Date: {date_col}, Value: {value_col}")
+        
         if not all([branch_col, date_col, value_col]):
+            missing = []
+            if not branch_col: missing.append(f'Branch (tried: {column_aliases["Branch"]})')
+            if not date_col: missing.append(f'Date (tried: {column_aliases["Date"]})')
+            if not value_col: missing.append(f'{value_column_name}')
+            print(f"Missing required columns: {missing}")
             return {}
         
         # Process the data - filter out rows with blank/empty branch names
         df_sales = df_sales[[branch_col, date_col, value_col]].copy()
         df_sales.columns = ['Branch', 'Month Format', value_column_name]
+        
+        print(f"Data before branch processing: {df_sales.shape[0]} rows")
+        
+        # Enhanced branch name processing with debug info
+        original_branches = df_sales['Branch'].unique()[:5]
+        print(f"Sample original branch names: {[str(b) for b in original_branches]}")
+        
+        # Apply branch name normalization
+        branch_mappings = custom_branch_mappings if custom_branch_mappings else create_branch_name_mappings()
+        df_sales['Branch_Original'] = df_sales['Branch'].copy()
+        df_sales['Branch'] = df_sales['Branch'].apply(
+            lambda x: normalize_branch_name(x, branch_mappings)
+        )
+        
+        # Show branch mapping results (sample)
+        branch_mapping_sample = df_sales[['Branch_Original', 'Branch']].drop_duplicates().head(5)
+        print("Branch mapping sample:")
+        for _, row in branch_mapping_sample.iterrows():
+            print(f"  '{row['Branch_Original']}' -> '{row['Branch']}'")
         
         # Filter out rows with blank/empty branch names
         df_sales = df_sales[
@@ -460,21 +645,47 @@ def process_sales_data_for_year(filepath, sheet_name, is_last_year=False, data_t
             (df_sales[value_column_name].notna())
         ]
         
+        print(f"Data after branch normalization: {df_sales.shape[0]} rows")
+        
         # Convert and clean data
         df_sales[value_column_name] = pd.to_numeric(df_sales[value_column_name], errors='coerce').fillna(0)
-        df_sales['Branch'] = df_sales['Branch'].replace([pd.NA, np.nan, None], '').apply(
-            lambda x: str(x).strip().upper() if pd.notna(x) else ''
-        )
         
-        # Process month data
+        # Enhanced month processing
         if pd.api.types.is_datetime64_any_dtype(df_sales['Month Format']):
             df_sales['Month'] = pd.to_datetime(df_sales['Month Format']).dt.strftime('%b')
         else:
+            # Handle various month formats
             month_str = df_sales['Month Format'].astype(str).str.strip().str.title()
+            
+            # Try different month parsing strategies
+            df_sales['Month'] = None
+            
+            # Strategy 1: Full month names
             try:
-                df_sales['Month'] = pd.to_datetime(month_str, format='%B').dt.strftime('%b')
-            except ValueError:
-                df_sales['Month'] = month_str.str[:3]
+                mask_full_month = pd.to_datetime(month_str, format='%B', errors='coerce').notna()
+                df_sales.loc[mask_full_month, 'Month'] = pd.to_datetime(month_str[mask_full_month], format='%B').dt.strftime('%b')
+            except:
+                pass
+            
+            # Strategy 2: Short month names (3 letters)
+            mask_short_month = df_sales['Month'].isna() & month_str.str.len() == 3
+            if mask_short_month.any():
+                df_sales.loc[mask_short_month, 'Month'] = month_str[mask_short_month].str[:3]
+            
+            # Strategy 3: Extract from longer strings
+            month_names = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December']
+            month_abbr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+            
+            mask_remaining = df_sales['Month'].isna()
+            for i, month_name in enumerate(month_names):
+                month_mask = mask_remaining & month_str.str.contains(month_name, case=False, na=False)
+                df_sales.loc[month_mask, 'Month'] = month_abbr[i]
+            
+            # Final fallback: take first 3 characters
+            mask_still_empty = df_sales['Month'].isna()
+            df_sales.loc[mask_still_empty, 'Month'] = month_str[mask_still_empty].str[:3]
         
         # Filter valid months and non-zero values
         valid_months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
@@ -484,11 +695,16 @@ def process_sales_data_for_year(filepath, sheet_name, is_last_year=False, data_t
             (df_sales[value_column_name] != 0)
         ]
         
+        print(f"Data after month filtering: {df_sales.shape[0]} rows")
+        print(f"Months found: {sorted(df_sales['Month'].unique())}")
+        
         if df_sales.empty:
+            print("No valid data found after processing")
             return {}
         
         # Group by branch and month
         grouped = df_sales.groupby(['Branch', 'Month'])[value_column_name].sum().reset_index()
+        print(f"Grouped data: {grouped.shape[0]} branch-month combinations")
         
         # Create the result dictionary with proper fiscal year logic
         result_data = {}
@@ -525,6 +741,11 @@ def process_sales_data_for_year(filepath, sheet_name, is_last_year=False, data_t
             # Sum amounts for the same branch and period
             result_data[branch][col_name] = result_data[branch].get(col_name, 0) + amount
         
+        print(f"Final result: {len(result_data)} branches with data")
+        sample_branches = list(result_data.keys())[:3]
+        for branch in sample_branches:
+            print(f"Sample data for {branch}: {len(result_data[branch])} months")
+        
         return result_data
         
     except Exception as e:
@@ -533,13 +754,44 @@ def process_sales_data_for_year(filepath, sheet_name, is_last_year=False, data_t
         traceback.print_exc()
         return {}
 
-# Updated process_sales_data_for_year function with proper blank handling
-# Modified section in the main processing function
+def merge_last_year_data_with_current(current_data, last_year_data):
+    """
+    Enhanced function to merge last year data with current year data
+    """
+    print(f"=== Merging Last Year Data ===")
+    print(f"Current data branches: {len(current_data)}")
+    print(f"Last year data branches: {len(last_year_data)}")
+    
+    # Create merged result
+    merged_data = current_data.copy()
+    
+    # Track branches found in last year but not current
+    new_branches = []
+    updated_branches = []
+    
+    for ly_branch, ly_data in last_year_data.items():
+        if ly_branch in merged_data:
+            # Update existing branch with last year data
+            merged_data[ly_branch].update(ly_data)
+            updated_branches.append(ly_branch)
+        else:
+            # Add new branch from last year data
+            merged_data[ly_branch] = ly_data.copy()
+            new_branches.append(ly_branch)
+    
+    print(f"Updated existing branches: {len(updated_branches)}")
+    print(f"Added new branches from LY data: {len(new_branches)}")
+    if new_branches:
+        print(f"New branches: {new_branches[:5]}...")  # Show first 5
+    
+    return merged_data
+
+# Main processing route
 @region_bp.route('/process-region-analysis', methods=['POST'])
 def process_region_analysis():
     """Process region analysis using existing uploaded files from main app"""
     try:
-        print("=== DEBUG: Starting region analysis ===")
+        print("=== DEBUG: Starting enhanced region analysis ===")
         data = request.json
         print(f"Request data keys: {list(data.keys()) if data else 'No data'}")
         
@@ -553,6 +805,9 @@ def process_region_analysis():
         selected_sales_sheet = data.get('selected_sales_sheet')
         selected_budget_sheet = data.get('selected_budget_sheet')
         selected_total_sales_sheet = data.get('selected_total_sales_sheet')
+        
+        # Get custom branch mappings if provided
+        custom_branch_mappings = data.get('custom_branch_mappings')
         
         if not sales_filepath or not budget_filepath:
             return jsonify({
@@ -595,8 +850,8 @@ def process_region_analysis():
         
         months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
         
-        # MODIFIED BUDGET PROCESSING WITH DYNAMIC HEADER DETECTION
-        print("=== DEBUG: Processing budget data with header detection ===")
+        # ENHANCED BUDGET PROCESSING
+        print("=== DEBUG: Processing budget data with enhanced header detection ===")
         
         # Detect correct header row for budget sheet
         budget_header_row = detect_budget_sheet_header_row(budget_filepath, selected_budget_sheet)
@@ -621,7 +876,7 @@ def process_region_analysis():
         
         print(f"Budget data processed successfully. Columns: {budget_data.columns.tolist()}")
         
-        # Process MT data
+        # Process MT data with enhanced processing
         mt_cols = [col for col in budget_data.columns if col.endswith('_MT')]
         result_mt = pd.DataFrame()
         
@@ -636,7 +891,7 @@ def process_region_analysis():
                 month_col = col.replace('_MT', '')
                 result_mt[month_col] = budget_data[col]
             
-            # Process current year MT data
+            # Process current year MT data with enhanced processing
             actual_mt_data = {}
             if sales_filepath and os.path.exists(sales_filepath) and selected_sales_sheet:
                 actual_mt_data = process_sales_data_for_year(
@@ -647,10 +902,11 @@ def process_region_analysis():
                     fiscal_year_start=fiscal_year_start,
                     fiscal_year_end=fiscal_year_end,
                     last_fiscal_year_start=last_fiscal_year_start,
-                    last_fiscal_year_end=last_fiscal_year_end
+                    last_fiscal_year_end=last_fiscal_year_end,
+                    custom_branch_mappings=custom_branch_mappings
                 )
             
-            # Process last year MT data with fallback logic
+            # Enhanced last year MT data processing
             last_year_mt_data = {}
             use_sales_sheet_for_ly = False
             
@@ -663,7 +919,8 @@ def process_region_analysis():
                     fiscal_year_start=fiscal_year_start,
                     fiscal_year_end=fiscal_year_end,
                     last_fiscal_year_start=last_fiscal_year_start,
-                    last_fiscal_year_end=last_fiscal_year_end
+                    last_fiscal_year_end=last_fiscal_year_end,
+                    custom_branch_mappings=custom_branch_mappings
                 )
                 if not last_year_mt_data:
                     use_sales_sheet_for_ly = True
@@ -679,14 +936,12 @@ def process_region_analysis():
                     fiscal_year_start=fiscal_year_start,
                     fiscal_year_end=fiscal_year_end,
                     last_fiscal_year_start=last_fiscal_year_start,
-                    last_fiscal_year_end=last_fiscal_year_end
+                    last_fiscal_year_end=last_fiscal_year_end,
+                    custom_branch_mappings=custom_branch_mappings
                 )
             
-            # Merge last year data with actual data
-            for branch, ly_data in last_year_mt_data.items():
-                if branch not in actual_mt_data:
-                    actual_mt_data[branch] = {}
-                actual_mt_data[branch].update(ly_data)
+            # Merge last year data with actual data using enhanced merge function
+            actual_mt_data = merge_last_year_data_with_current(actual_mt_data, last_year_mt_data)
             
             # Add actual columns
             all_mt_cols = set()
@@ -746,7 +1001,7 @@ def process_region_analysis():
             result_mt[numeric_cols] = result_mt[numeric_cols].fillna(0)
             
             # Calculate Growth Rate and Achievement
-            group_companies = ['GROUP', 'Group']
+            group_companies = ['GROUP']
             
             for month in months:
                 budget_year = str(fiscal_year_start)[-2:] if month in months[:9] else str(fiscal_year_end)[-2:]
@@ -795,7 +1050,7 @@ def process_region_analysis():
             result_mt = add_ytd_calculations_auditor_format(result_mt, 'MT', fiscal_year_start, fiscal_year_end,
                                                           last_fiscal_year_start, last_fiscal_year_end)
         
-        # Process Value data (similar structure as MT data)
+        # Process Value data (similar enhanced structure as MT data)
         value_cols = [col for col in budget_data.columns if col.endswith('_Value')]
         result_value = pd.DataFrame()
         
@@ -810,7 +1065,7 @@ def process_region_analysis():
                 month_col = col.replace('_Value', '')
                 result_value[month_col] = budget_data[col]
             
-            # Process current year Value data
+            # Process current year Value data with enhanced processing
             actual_value_data = {}
             if sales_filepath and os.path.exists(sales_filepath) and selected_sales_sheet:
                 actual_value_data = process_sales_data_for_year(
@@ -821,10 +1076,11 @@ def process_region_analysis():
                     fiscal_year_start=fiscal_year_start,
                     fiscal_year_end=fiscal_year_end,
                     last_fiscal_year_start=last_fiscal_year_start,
-                    last_fiscal_year_end=last_fiscal_year_end
+                    last_fiscal_year_end=last_fiscal_year_end,
+                    custom_branch_mappings=custom_branch_mappings
                 )
             
-            # Process last year Value data
+            # Process last year Value data with enhanced processing
             last_year_value_data = {}
             use_sales_sheet_for_ly_value = False
             
@@ -837,7 +1093,8 @@ def process_region_analysis():
                     fiscal_year_start=fiscal_year_start,
                     fiscal_year_end=fiscal_year_end,
                     last_fiscal_year_start=last_fiscal_year_start,
-                    last_fiscal_year_end=last_fiscal_year_end
+                    last_fiscal_year_end=last_fiscal_year_end,
+                    custom_branch_mappings=custom_branch_mappings
                 )
                 if not last_year_value_data:
                     use_sales_sheet_for_ly_value = True
@@ -853,14 +1110,12 @@ def process_region_analysis():
                     fiscal_year_start=fiscal_year_start,
                     fiscal_year_end=fiscal_year_end,
                     last_fiscal_year_start=last_fiscal_year_start,
-                    last_fiscal_year_end=last_fiscal_year_end
+                    last_fiscal_year_end=last_fiscal_year_end,
+                    custom_branch_mappings=custom_branch_mappings
                 )
             
-            # Merge last year data with actual data
-            for branch, ly_data in last_year_value_data.items():
-                if branch not in actual_value_data:
-                    actual_value_data[branch] = {}
-                actual_value_data[branch].update(ly_data)
+            # Merge last year data with actual data using enhanced merge function
+            actual_value_data = merge_last_year_data_with_current(actual_value_data, last_year_value_data)
             
             # Add actual columns
             all_value_cols = set()
@@ -871,7 +1126,7 @@ def process_region_analysis():
                 if col_name not in result_value.columns:
                     result_value[col_name] = 0.0
             
-            # Merge actual Value data
+            # Merge actual Value data (similar logic as MT)
             for branch, data in actual_value_data.items():
                 matching_rows = result_value[result_value['SALES in Value'] == branch]
                 
@@ -919,7 +1174,7 @@ def process_region_analysis():
             numeric_cols_value = result_value.select_dtypes(include=[np.number]).columns
             result_value[numeric_cols_value] = result_value[numeric_cols_value].fillna(0)
             
-            # Calculate Growth Rate and Achievement
+            # Calculate Growth Rate and Achievement (same logic as MT)
             for month in months:
                 budget_year = str(fiscal_year_start)[-2:] if month in months[:9] else str(fiscal_year_end)[-2:]
                 actual_year = str(fiscal_year_start)[-2:] if month in months[:9] else str(fiscal_year_end)[-2:]
@@ -980,11 +1235,12 @@ def process_region_analysis():
                 'mt_used_fallback': use_sales_sheet_for_ly,
                 'value_used_fallback': use_sales_sheet_for_ly_value,
                 'total_sales_file_available': total_sales_filepath and os.path.exists(total_sales_filepath),
-                'total_sales_sheet_selected': bool(selected_total_sales_sheet)
+                'total_sales_sheet_selected': bool(selected_total_sales_sheet),
+                'custom_mappings_used': bool(custom_branch_mappings)
             }
         }
         
-        print("=== DEBUG: Processing completed successfully ===")
+        print("=== DEBUG: Enhanced processing completed successfully ===")
         print(f"MT data rows: {len(result_data['mt_data'])}")
         print(f"Value data rows: {len(result_data['value_data'])}")
         
@@ -999,37 +1255,8 @@ def process_region_analysis():
         
         return jsonify({
             'success': False,
-            'error': f'Processing error: {str(e)}'
+            'error': f'Enhanced processing error: {str(e)}'
         }), 500
-# Additional helper function to validate budget data structure
-def validate_budget_data_structure(df, expected_identifier_col='REGIONS'):
-    """
-    Validate that the budget data has the expected structure
-    Returns True if valid, False otherwise
-    """
-    try:
-        # Check if we have the identifier column
-        identifier_col = find_column(df, ['Branch', 'Region', 'REGIONS'], threshold=70)
-        if not identifier_col:
-            print("No valid identifier column found in budget data")
-            return False
-        
-        # Check if we have budget-related columns
-        budget_cols = [col for col in df.columns if any(keyword in str(col).upper() 
-                      for keyword in ['QTY', 'VALUE', 'BUDGET', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN', 'FEB', 'MAR'])]
-        
-        if len(budget_cols) < 3:  # Should have at least a few budget columns
-            print(f"Insufficient budget columns found: {len(budget_cols)}")
-            return False
-        
-        print(f"Budget data validation passed: identifier='{identifier_col}', budget_cols={len(budget_cols)}")
-        return True
-        
-    except Exception as e:
-        print(f"Error validating budget data structure: {e}")
-        return False
-   
-# Add this new endpoint to your existing region.py file
 
 @region_bp.route('/download-combined-single-sheet', methods=['POST'])
 def download_combined_single_sheet():
@@ -1043,7 +1270,6 @@ def download_combined_single_sheet():
         fiscal_year = data.get('fiscal_year', '')
         include_both_tables = data.get('include_both_tables', True)
         single_sheet = data.get('single_sheet', True)
-        
         
         if not mt_data and not value_data:
             return jsonify({
@@ -1117,7 +1343,7 @@ def download_combined_single_sheet():
             current_row = 0
             
             # Main title
-            main_title = f"Region-wise Sales Analysis - Combined Report (FY {fiscal_year})"
+            main_title = f"Region-wise Sales Analysis - Enhanced Report (FY {fiscal_year})"
             max_cols = max(len(mt_columns) if mt_columns else 0, len(value_columns) if value_columns else 0)
             if max_cols > 1:
                 worksheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, title_format)
@@ -1282,6 +1508,7 @@ def download_combined_single_sheet():
             footer_info = [
                 f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                 f"Fiscal Year: {fiscal_year}",
+                f"Enhanced Branch Processing: Enabled",
                 f"MT Records: {len(mt_data)}",
                 f"Value Records: {len(value_data)}",
                 f"Total Records: {len(mt_data) + len(value_data)}"
@@ -1307,7 +1534,7 @@ def download_combined_single_sheet():
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"region_combined_single_sheet_{fiscal_year}_{timestamp}.xlsx"
+        filename = f"region_enhanced_single_sheet_{fiscal_year}_{timestamp}.xlsx"
         
         return send_file(
             BytesIO(excel_data),
@@ -1317,86 +1544,19 @@ def download_combined_single_sheet():
         )
         
     except Exception as e:
-        print(f"=== DEBUG: Error in single sheet generation ===")
+        print(f"=== DEBUG: Error in enhanced single sheet generation ===")
         print(f"Error: {str(e)}")
         import traceback
         traceback.print_exc()
         
         return jsonify({
             'success': False,
-            'error': f'Single sheet Excel generation error: {str(e)}'
+            'error': f'Enhanced single sheet Excel generation error: {str(e)}'
         }), 500
 
-# Add this utility function for enhanced single sheet formatting
-def create_enhanced_single_sheet_formats(workbook):
-    """Create enhanced formats for single sheet Excel"""
-    formats = {}
-    
-    # Title formats
-    formats['main_title'] = workbook.add_format({
-        'bold': True, 'align': 'center', 'valign': 'vcenter',
-        'font_size': 18, 'font_color': '#000000', 'bg_color': '#B4C6E7',
-        'border': 2, 'border_color': '#4472C4'
-    })
-    
-    formats['table_title'] = workbook.add_format({
-        'bold': True, 'align': 'center', 'valign': 'vcenter',
-        'font_size': 14, 'font_color': '#1F4E79', 'bg_color': '#D9E1F2',
-        'border': 1
-    })
-    
-    # Header formats
-    formats['data_header'] = workbook.add_format({
-        'bold': True, 'text_wrap': True, 'valign': 'top', 'align': 'center',
-        'fg_color': '#4472C4', 'font_color': 'white', 'border': 1,
-        'font_size': 10
-    })
-    
-    formats['region_header'] = workbook.add_format({
-        'bold': True, 'text_wrap': True, 'valign': 'top', 'align': 'center',
-        'fg_color': '#2E5F8A', 'font_color': 'white', 'border': 1,
-        'font_size': 10
-    })
-    
-    # Data formats
-    formats['number'] = workbook.add_format({
-        'num_format': '#,##0.00', 'border': 1, 'align': 'right'
-    })
-    
-    formats['text'] = workbook.add_format({
-        'border': 1, 'valign': 'vcenter', 'align': 'left'
-    })
-    
-    # Regional total formats with distinct colors
-    formats['north_total'] = workbook.add_format({
-        'bold': True, 'num_format': '#,##0.00', 'bg_color': '#D4EDDA', 
-        'font_color': '#155724', 'border': 1
-    })
-    
-    formats['west_total'] = workbook.add_format({
-        'bold': True, 'num_format': '#,##0.00', 'bg_color': '#FFF3CD', 
-        'font_color': '#856404', 'border': 1
-    })
-    
-    formats['group_total'] = workbook.add_format({
-        'bold': True, 'num_format': '#,##0.00', 'bg_color': '#CCE5FF', 
-        'font_color': '#004085', 'border': 1
-    })
-    
-    formats['grand_total'] = workbook.add_format({
-        'bold': True, 'num_format': '#,##0.00', 'bg_color': '#C3E6CB', 
-        'font_color': '#155724', 'border': 1, 'font_size': 11
-    })
-    
-    # Footer format
-    formats['footer'] = workbook.add_format({
-        'font_size': 9, 'italic': True, 'font_color': '#666666'
-    })
-    
-    return formats
 @region_bp.route('/generate-region-report', methods=['POST'])
 def generate_region_report():
-    """Generate comprehensive region analysis report with multiple sheets"""
+    """Generate comprehensive enhanced region analysis report with multiple sheets"""
     try:
         data = request.json
         mt_data = data.get('mt_data', [])
@@ -1415,7 +1575,7 @@ def generate_region_report():
         
         # Generate timestamp for filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"region_comprehensive_report_{fiscal_year}_{timestamp}.xlsx"
+        filename = f"region_enhanced_comprehensive_report_{fiscal_year}_{timestamp}.xlsx"
         
         # Create Excel report with multiple sheets
         output = BytesIO()
@@ -1491,13 +1651,13 @@ def generate_region_report():
                 else:
                     return None
             
-            # Combined Analysis Sheet (Only Sheet)
+            # Enhanced Combined Analysis Sheet
             if mt_data or value_data:
-                combined_sheet = workbook.add_worksheet('Combined Region Analysis')
+                combined_sheet = workbook.add_worksheet('Enhanced Region Analysis')
                 current_row = 0
                 
                 # Main title
-                main_title = f"Region-wise Combined Analysis - FY {fiscal_year}"
+                main_title = f"Enhanced Region-wise Analysis - FY {fiscal_year}"
                 max_cols = max(len(mt_columns), len(value_columns))
                 if max_cols > 1:
                     combined_sheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, title_format)
@@ -1507,7 +1667,7 @@ def generate_region_report():
                 
                 # MT Section (only if MT data exists)
                 if mt_data and mt_columns:
-                    mt_section_title = "SALES in MT Analysis"
+                    mt_section_title = "SALES in MT Analysis (Enhanced Branch Processing)"
                     if len(mt_columns) > 1:
                         combined_sheet.merge_range(current_row, 0, current_row, len(mt_columns) - 1, mt_section_title, subtitle_format)
                     else:
@@ -1538,7 +1698,7 @@ def generate_region_report():
                 
                 # Value Section
                 if value_data and value_columns:
-                    value_section_title = "SALES in Value Analysis"
+                    value_section_title = "SALES in Value Analysis (Enhanced Branch Processing)"
                     if len(value_columns) > 1:
                         combined_sheet.merge_range(current_row, 0, current_row, len(value_columns) - 1, value_section_title, subtitle_format)
                     else:
@@ -1565,10 +1725,29 @@ def generate_region_report():
                                 combined_sheet.write(current_row, col_num, cell_value, fmt)
                         current_row += 1
                 
+                # Add footer with enhanced processing info
+                current_row += 3
+                footer_info = [
+                    f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                    f"Enhanced Branch Processing: ENABLED",
+                    f"Branch Name Standardization: ACTIVE",
+                    f"Fuzzy Match Threshold: 85%",
+                    f"Total Branches Processed: {len(set([row.get(mt_columns[0] if mt_columns else value_columns[0], '') for row in (mt_data + value_data)]))}",
+                    f"Regional Classifications: Auto-Detected"
+                ]
+                
+                footer_format = workbook.add_format({
+                    'font_size': 9, 'italic': True, 'font_color': '#666666'
+                })
+                
+                for info_line in footer_info:
+                    combined_sheet.write(current_row, 0, info_line, footer_format)
+                    current_row += 1
+                
                 # Freeze panes
                 combined_sheet.freeze_panes(4, 1)
             
-            # Set print settings for the single sheet
+            # Set print settings for the sheet
             combined_sheet.set_landscape()
             combined_sheet.set_paper(9)  # A4
             combined_sheet.fit_to_pages(1, 0)  # Fit to 1 page wide
@@ -1586,12 +1765,12 @@ def generate_region_report():
         })
         
     except Exception as e:
-        print(f"=== DEBUG: Error in region report generation ===")
+        print(f"=== DEBUG: Error in enhanced region report generation ===")
         print(f"Error: {str(e)}")
         import traceback
         traceback.print_exc()
         
         return jsonify({
             'success': False,
-            'error': f'Region report generation error: {str(e)}'
+            'error': f'Enhanced region report generation error: {str(e)}'
         }), 500
