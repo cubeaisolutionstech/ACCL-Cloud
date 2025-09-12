@@ -553,7 +553,7 @@ def create_product_growth_ppt(group_results, month_title, logo_file=None, ly_mon
         prs.slide_height = Inches(7.5)
         
         # Create title slide (no page number) - clean title without LY/CY details
-        clean_title = f"PRODUCT GROWTH BY COMPANY GROUP"
+        clean_title = f"PRODUCT GROWTH REPORT"
         create_title_slide(prs, clean_title, logo_file, executive_name, date_str, branch_name)
         
         page_num = 1
