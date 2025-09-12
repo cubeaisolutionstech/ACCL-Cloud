@@ -382,6 +382,121 @@ def db_test():
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
         }), 500
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Generate OTP
+        otp_code = generate_otp()
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+        # Remove old OTPs
+        OTP.query.filter_by(user_id=user.id, is_used=False).delete()
+
+        # Create new OTP
+        otp = OTP(
+            user_id=user.id,
+            otp_code=otp_code,
+            expires_at=expires_at
+        )
+        db.session.add(otp)
+        db.session.commit()
+
+        # Send OTP via email
+        if send_email_otp(user.email, otp_code, user.full_name):
+            return jsonify({'message': 'OTP sent to your email'}), 200
+        else:
+            return jsonify({
+                'message': 'OTP generated (email failed)',
+                'otp': otp_code  # ⚠️ demo only
+            }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+@app.route('/api/verify-forgot-otp', methods=['POST'])
+def verify_forgot_otp():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        otp_code = data.get('otp_code')
+
+        if not email or not otp_code:
+            return jsonify({'error': 'Email and OTP are required'}), 400
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        otp = OTP.query.filter_by(
+            user_id=user.id,
+            otp_code=otp_code,
+            is_used=False
+        ).first()
+
+        if not otp:
+            return jsonify({'error': 'Invalid OTP'}), 400
+
+        if datetime.utcnow() > otp.expires_at:
+            return jsonify({'error': 'OTP has expired'}), 400
+
+        # Mark OTP as used but allow password reset
+        otp.is_used = True
+        db.session.commit()
+
+        return jsonify({'message': 'OTP verified successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+@app.route('/api/reset-password', methods=['POST'])
+def reset_password():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        otp_code = data.get('otp_code')
+        new_password = data.get('new_password')
+
+        if not email or not otp_code or not new_password:
+            return jsonify({'error': 'Email, OTP, and new password are required'}), 400
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Find OTP (don’t require is_used=True, just check validity)
+        otp = OTP.query.filter_by(
+            user_id=user.id,
+            otp_code=otp_code
+        ).first()
+
+        if not otp:
+            return jsonify({'error': 'Invalid OTP'}), 400
+
+        if datetime.utcnow() > otp.expires_at:
+            return jsonify({'error': 'OTP has expired'}), 400
+
+        # Mark OTP as used
+        otp.is_used = True
+
+        # ✅ Update password with hash
+        user.password_hash = generate_password_hash(new_password)
+
+        db.session.commit()
+
+        return jsonify({'message': 'Password reset successful'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 if __name__ == '__main__':
     with app.app_context():
