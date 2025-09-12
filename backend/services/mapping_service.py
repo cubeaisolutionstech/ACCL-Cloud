@@ -203,6 +203,29 @@ def export_all_mappings():
     }
     return data
 
+# services/mapping_service.py
+
+def reset_all_mappings():
+    try:
+        # Clear mapping tables first
+        BranchExecutiveMap.query.delete()
+        RegionBranchMap.query.delete()
+        CompanyProductMap.query.delete()
+        Customer.query.delete()   # optional: reset exec-customer mapping too
+
+        # Clear base tables if you want a hard reset
+        Executive.query.delete()
+        Branch.query.delete()
+        Region.query.delete()
+        Company.query.delete()
+        Product.query.delete()
+
+        db.session.commit()
+        return True, "All mappings reset successfully."
+    except Exception as e:
+        db.session.rollback()
+        return False, f"Error resetting mappings: {str(e)}"
+
 
 ### --------- Excel Processing ----------
 
