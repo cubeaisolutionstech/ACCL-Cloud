@@ -17,7 +17,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, onReset }) => {
       const { data } = await api.post("/reset-mappings");
       if (data.success) {
         alert(`✅ ${data.message}`);
-        if (onReset) onReset(); // 🔥 reset frontend states too
+        if (onReset) onReset();
       } else {
         alert(`❌ Failed: ${data.message}`);
       }
@@ -49,14 +49,14 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, onReset }) => {
       <div className="space-y-3">
         <button
           onClick={handleResetMappings}
-          className="w-full bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 text-sm font-semibold shadow"
+          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 text-sm font-semibold shadow transition-colors duration-200"
         >
           Reset Mappings
         </button>
 
         <button
           onClick={onLogout}
-          className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 text-sm font-semibold shadow"
+          className="w-full bg-slate-600 text-white py-2 rounded-lg hover:bg-slate-700 text-sm font-semibold shadow transition-colors duration-200"
         >
           Logout
         </button>
