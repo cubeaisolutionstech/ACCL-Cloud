@@ -50,6 +50,27 @@ const ExecutiveProductGrowth = () => {
    budget: {}
  });
 
+ // Function to rename columns in data
+ const renameColumns = (data) => {
+   return data.map(row => {
+     const newRow = { ...row };
+     
+     // Rename BUDGET_QTY to TARGET_QTY
+     if ('BUDGET_QTY' in newRow) {
+       newRow['TARGET_QTY'] = newRow['BUDGET_QTY'];
+       delete newRow['BUDGET_QTY'];
+     }
+     
+     // Rename BUDGET_VALUE to TARGET_VALUE
+     if ('BUDGET_VALUE' in newRow) {
+       newRow['TARGET_VALUE'] = newRow['BUDGET_VALUE'];
+       delete newRow['BUDGET_VALUE'];
+     }
+     
+     return newRow;
+   });
+ };
+
  // Fetch available sheet names from backend
  const fetchSheets = async (filename, setter) => {
    try {
@@ -187,8 +208,8 @@ const ExecutiveProductGrowth = () => {
        Object.entries(resultsData.streamlit_result).forEach(([company, data]) => {
          // Add quantity table with transformed headers for storage
          if (data.qty_df && data.qty_df.length > 0) {
-           // Transform the data to use display labels
-           const transformedQtyData = data.qty_df.map(row => {
+           // Transform the data to use display labels and rename TARGET columns
+           const transformedQtyData = renameColumns(data.qty_df).map(row => {
              const newRow = { ...row };
              // Rename keys for display in consolidated reports
              if ('LY_QTY' in newRow) {
@@ -215,8 +236,8 @@ const ExecutiveProductGrowth = () => {
          
          // Add value table with transformed headers
          if (data.value_df && data.value_df.length > 0) {
-           // Transform the data to use display labels
-           const transformedValueData = data.value_df.map(row => {
+           // Transform the data to use display labels and rename TARGET columns
+           const transformedValueData = renameColumns(data.value_df).map(row => {
              const newRow = { ...row };
              // Rename keys for display in consolidated reports
              if ('LY_VALUE' in newRow) {
@@ -443,8 +464,7 @@ const ExecutiveProductGrowth = () => {
  const renderStreamlitStyleTables = () => {
    if (!results?.streamlit_result) return null;
 
-   // Define the correct column order for display with ORIGINAL DATA KEYS
-   // We keep the original keys but display different labels
+   // Define the correct column order for display with TARGET renamed columns
    const qtyColumnOrder = ['PRODUCT GROUP', 'LY_QTY', 'TARGET_QTY', 'CY_QTY', 'ACHIEVEMENT %'];
    const valueColumnOrder = ['PRODUCT GROUP', 'LY_VALUE', 'TARGET_VALUE', 'CY_VALUE', 'ACHIEVEMENT %'];
 
@@ -453,6 +473,8 @@ const ExecutiveProductGrowth = () => {
      const labelMap = {
        'LY_QTY': 'LAST YEAR QTY',
        'LY_VALUE': 'LAST YEAR VALUE',
+       'TARGET_QTY': 'TARGET QTY',
+       'TARGET_VALUE': 'TARGET VALUE',
        'CY_QTY': 'CURRENT YEAR QTY',
        'CY_VALUE': 'CURRENT YEAR VALUE',
        'ACHIEVEMENT %': 'GROWTH %'
@@ -479,7 +501,7 @@ const ExecutiveProductGrowth = () => {
                </tr>
              </thead>
              <tbody>
-               {data.qty_df && data.qty_df.map((row, i) => (
+               {data.qty_df && renameColumns(data.qty_df).map((row, i) => (
                  <tr 
                    key={i} 
                    className={`
@@ -523,7 +545,7 @@ const ExecutiveProductGrowth = () => {
                </tr>
              </thead>
              <tbody>
-               {data.value_df && data.value_df.map((row, i) => (
+               {data.value_df && renameColumns(data.value_df).map((row, i) => (
                  <tr 
                    key={i} 
                    className={`
@@ -798,8 +820,8 @@ const ExecutiveProductGrowth = () => {
                <label className="block font-semibold mb-2">
                  Executives ({filters.selectedExecutives.length} of {executiveOptions.length})
                </label>
-               <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                 <label className="flex items-center mb-2">
+               <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+                 <label className="flex items-center mb-3">
                    <input
                      type="checkbox"
                      checked={filters.selectedExecutives.length === executiveOptions.length}
@@ -810,12 +832,12 @@ const ExecutiveProductGrowth = () => {
                          setFilters(prev => ({ ...prev, selectedExecutives: [] }));
                        }
                      }}
-                     className="mr-2"
+                     className="mr-3"
                    />
                    <span className="font-medium text-sm">Select All</span>
                  </label>
                  {executiveOptions.map(exec => (
-                   <label key={exec} className="flex items-center mb-1">
+                   <label key={exec} className="flex items-center mb-2">
                      <input
                        type="checkbox"
                        checked={filters.selectedExecutives.includes(exec)}
@@ -832,9 +854,9 @@ const ExecutiveProductGrowth = () => {
                            }));
                          }
                        }}
-                       className="mr-2"
+                       className="mr-3"
                      />
-                     <span className="text-xs">{exec}</span>
+                     <span className="text-xm">{exec}</span>
                    </label>
                  ))}
                </div>
@@ -844,11 +866,11 @@ const ExecutiveProductGrowth = () => {
            {/* Company Group Filter */}
            {companyGroupOptions.length > 0 && (
              <div>
-               <label className="block font-semibold mb-2">
+               <label className="block font-semibold mb-3">
                  Company Groups ({filters.selectedCompanyGroups.length} of {companyGroupOptions.length})
                </label>
-               <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                 <label className="flex items-center mb-2">
+               <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+                 <label className="flex items-center mb-3">
                    <input
                      type="checkbox"
                      checked={filters.selectedCompanyGroups.length === companyGroupOptions.length}
@@ -859,12 +881,12 @@ const ExecutiveProductGrowth = () => {
                          setFilters(prev => ({ ...prev, selectedCompanyGroups: [] }));
                        }
                      }}
-                     className="mr-2"
+                     className="mr-3"
                    />
-                   <span className="font-medium text-sm">Select All</span>
+                   <span className="font-medium text-xm">Select All</span>
                  </label>
                  {companyGroupOptions.map(group => (
-                   <label key={group} className="flex items-center mb-1">
+                   <label key={group} className="flex items-center mb-2">
                      <input
                        type="checkbox"
                        checked={filters.selectedCompanyGroups.includes(group)}
@@ -881,9 +903,9 @@ const ExecutiveProductGrowth = () => {
                            }));
                          }
                        }}
-                       className="mr-2"
+                       className="mr-3"
                      />
-                     <span className="text-xs">{group}</span>
+                     <span className="text-xm">{group}</span>
                    </label>
                  ))}
                </div>
@@ -896,8 +918,8 @@ const ExecutiveProductGrowth = () => {
                <label className="block font-semibold mb-2">
                  Product Groups ({filters.selectedProductGroups.length} of {productGroupOptions.length})
                </label>
-               <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                 <label className="flex items-center mb-2">
+               <div className="max-h-60 overflow-y-auto border border-gray-300 rounded p-3">
+                 <label className="flex items-center mb-3">
                    <input
                      type="checkbox"
                      checked={filters.selectedProductGroups.length === productGroupOptions.length}
@@ -908,12 +930,12 @@ const ExecutiveProductGrowth = () => {
                          setFilters(prev => ({ ...prev, selectedProductGroups: [] }));
                        }
                      }}
-                     className="mr-2"
+                     className="mr-3"
                    />
-                   <span className="font-medium text-sm">Select All</span>
+                   <span className="font-medium text-xm">Select All</span>
                  </label>
                  {productGroupOptions.map(group => (
-                   <label key={group} className="flex items-center mb-1">
+                   <label key={group} className="flex items-center mb-2">
                      <input
                        type="checkbox"
                        checked={filters.selectedProductGroups.includes(group)}
@@ -930,9 +952,9 @@ const ExecutiveProductGrowth = () => {
                            }));
                          }
                        }}
-                       className="mr-2"
+                       className="mr-3"
                      />
-                     <span className="text-xs">{group}</span>
+                     <span className="text-xm">{group}</span>
                    </label>
                  ))}
                </div>
@@ -947,7 +969,7 @@ const ExecutiveProductGrowth = () => {
        <button
          onClick={handleCalculate}
          disabled={loading || !lyColumns.length || !cyColumns.length || !budgetColumns.length}
-         className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+         className="bg-red-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
        >
          {loading ? 'Calculating...' : 'Calculate Product Growth'}
        </button>
@@ -970,7 +992,7 @@ const ExecutiveProductGrowth = () => {
            <button
              onClick={handleDownloadPpt}
              disabled={downloadingPpt || !results}
-             className="bg-purple-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+             className="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700"
            >
              {downloadingPpt ? 'Generating PPT...' : 'Download PowerPoint'}
            </button>
