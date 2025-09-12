@@ -894,18 +894,24 @@ def create_consolidated_ppt(dfs_info, logo_file=None, title="Consolidated Report
             
             # ENHANCED: Fix Product Growth titles for consolidated PPT
             original_lower = slide_title.lower()
+            is_product_growth = False
+            product_growth_type = None
             
             # Pattern 1: "CompanyName - Quantity Growth - Extra Text" - Keep as Quantity Growth
             if 'quantity growth' in original_lower:
                 # Extract company name (first part before any " - ")
                 company_name = slide_title.split(' - ')[0].strip()
                 slide_title = f"{company_name} - Quantity Growth"
+                is_product_growth = True
+                product_growth_type = "qty"
                 logger.info(f"✅ FIXED Quantity Growth title: '{slide_title}'")
             
             # Pattern 2: "CompanyName - Value Growth - Extra Text" 
             elif 'value growth' in original_lower:
                 company_name = slide_title.split(' - ')[0].strip()
                 slide_title = f"{company_name} - Value Growth"
+                is_product_growth = True
+                product_growth_type = "value"
                 logger.info(f"✅ FIXED Value Growth title: '{slide_title}'")
             
             # Pattern 3: Handle malformed titles like "Cp - - Last Year..."
@@ -915,8 +921,11 @@ def create_consolidated_ppt(dfs_info, logo_file=None, title="Consolidated Report
                 columns_str = str(df_info.get('columns', [])).lower()
                 if 'qty' in columns_str or 'quantity' in columns_str:
                     slide_title = f"{company_name} - Quantity Growth"
+                    product_growth_type = "qty"
                 else:
                     slide_title = f"{company_name} - Value Growth"
+                    product_growth_type = "value"
+                is_product_growth = True
                 logger.info(f"✅ FIXED malformed title: '{slide_title}'")
             
             # Convert to DataFrame if it's a list of dicts
@@ -925,11 +934,17 @@ def create_consolidated_ppt(dfs_info, logo_file=None, title="Consolidated Report
             else:
                 df = df_data.copy()
 
-            # Apply frontend-defined column order (if present)
-            frontend_order = df_info.get("columns")
-            if frontend_order:
-                df = df[[col for col in frontend_order if col in df.columns]]
-                logger.info(f"📐 Applied frontend column order: {frontend_order}")
+            # FIXED: Apply product growth column ordering if detected
+            if is_product_growth and product_growth_type:
+                df = fix_product_growth_columns(df, product_growth_type)
+                logger.info(f"📐 Applied product growth column ordering for {product_growth_type}")
+            
+            # Apply frontend-defined column order (if present) - but only if NOT product growth
+            elif not is_product_growth:
+                frontend_order = df_info.get("columns")
+                if frontend_order:
+                    df = df[[col for col in frontend_order if col in df.columns]]
+                    logger.info(f"📐 Applied frontend column order: {frontend_order}")
             
             if df.empty:
                 logger.warning(f"Skipping empty report: {slide_title}")
@@ -937,7 +952,7 @@ def create_consolidated_ppt(dfs_info, logo_file=None, title="Consolidated Report
             
             logger.info(f"🔄 Processing consolidated report: {slide_title}")
             print(f"🔄 Processing consolidated report: {slide_title}")
-            print(f"🔍 Original DataFrame columns: {list(df.columns)}")
+            print(f"🔍 Final DataFrame columns: {list(df.columns)}")
             
             # Use process_df_for_slides for proper splitting
             process_df_for_slides(prs, df, slide_title, percent_cols=percent_cols, is_consolidated=True)
@@ -961,6 +976,100 @@ def create_consolidated_ppt(dfs_info, logo_file=None, title="Consolidated Report
         logger.error(f"Error creating consolidated PPT: {str(e)}")
         raise Exception(f"Error creating consolidated PPT: {str(e)}")
 
+
+def fix_product_growth_columns(df, report_type="auto"):
+    """Fix column ordering for Product Growth DataFrames and ensure TOTAL row is present"""
+    try:
+        if df.empty:
+            return df
+            
+        available_columns = list(df.columns)
+        logger.info(f"🔧 Fixing product growth columns for {report_type}: {available_columns}")
+        
+        # Check if TOTAL row exists
+        has_total = False
+        if 'PRODUCT GROUP' in available_columns:
+            has_total = df['PRODUCT GROUP'].apply(is_total_row).any()
+            logger.info(f"🔍 TOTAL row found: {has_total}")
+        
+        # Auto-detect report type if not specified
+        if report_type == "auto":
+            has_qty = any('QTY' in col.upper() for col in available_columns)
+            has_value = any('VALUE' in col.upper() for col in available_columns)
+            
+            if has_qty and not has_value:
+                report_type = "qty"
+            elif has_value and not has_qty:
+                report_type = "value"
+            else:
+                # Mixed or unclear, count occurrences
+                qty_count = sum(1 for col in available_columns if 'QTY' in col.upper())
+                value_count = sum(1 for col in available_columns if 'VALUE' in col.upper())
+                
+                if qty_count > value_count:
+                    report_type = "qty"
+                elif value_count > qty_count:
+                    report_type = "value"
+                else:
+                    # Can't determine, return as-is
+                    logger.warning(f"⚠️ Cannot determine product growth type, using original order")
+                    return df
+        
+        # Define correct column order based on what's actually in the DataFrame
+        def find_column(patterns, available_cols):
+            """Find column that matches any of the patterns (case insensitive)"""
+            for col in available_cols:
+                col_upper = col.upper()
+                for pattern in patterns:
+                    if pattern.upper() in col_upper:
+                        return col
+            return None
+        
+        # Find the product group column
+        product_group_col = find_column(['PRODUCT GROUP', 'PRODUCT', 'GROUP'], available_columns)
+        
+        if report_type == "qty":
+            # Find quantity-related columns
+            ly_qty = find_column(['LY_QTY', 'LY QTY', 'LAST YEAR QTY', 'LASTYEAR QTY'], available_columns)
+            budget_qty = find_column(['BUDGET_QTY', 'BUDGET QTY', 'TARGET_QTY', 'TARGET QTY'], available_columns)
+            cy_qty = find_column(['CY_QTY', 'CY QTY', 'CURRENT YEAR QTY', 'CURRENTYEAR QTY'], available_columns)
+            achievement = find_column(['ACHIEVEMENT', 'GROWTH', 'ACHIEVEMENT %', 'GROWTH %'], available_columns)
+            
+            correct_order = [product_group_col, ly_qty, budget_qty, cy_qty, achievement]
+            
+        elif report_type == "value":
+            # Find value-related columns
+            ly_value = find_column(['LY_VALUE', 'LY VALUE', 'LAST YEAR VALUE', 'LASTYEAR VALUE'], available_columns)
+            budget_value = find_column(['BUDGET_VALUE', 'BUDGET VALUE', 'TARGET_VALUE', 'TARGET VALUE'], available_columns)
+            cy_value = find_column(['CY_VALUE', 'CY VALUE', 'CURRENT YEAR VALUE', 'CURRENTYEAR VALUE'], available_columns)
+            achievement = find_column(['ACHIEVEMENT', 'GROWTH', 'ACHIEVEMENT %', 'GROWTH %'], available_columns)
+            
+            correct_order = [product_group_col, ly_value, budget_value, cy_value, achievement]
+        else:
+            return df
+        
+        # Build ordered columns list, filtering out None values
+        ordered_columns = [col for col in correct_order if col is not None]
+        
+        # Add any remaining columns that weren't matched
+        for col in available_columns:
+            if col not in ordered_columns:
+                ordered_columns.append(col)
+        
+        # Only reorder if we found the main columns
+        if len(ordered_columns) >= 3 and product_group_col:
+            # Return reordered DataFrame
+            reordered_df = df[ordered_columns].copy()
+            logger.info(f"✅ Fixed product growth {report_type} columns: {available_columns} → {ordered_columns}")
+            return reordered_df
+        else:
+            logger.warning(f"Could not identify enough product growth columns, keeping original order")
+            return df
+        
+    except Exception as e:
+        logger.error(f"Error fixing product growth columns: {e}")
+        return df
+    
 def create_product_growth_ppt(group_results, month_title, logo_file=None, ly_month=None, cy_month=None, executive_name=None, date_str=None, branch_name=None):
     """
     Create Product Growth PPT with FIXED column ordering and enhanced formatting - ENSURE TOTAL ROW IS INCLUDED
@@ -971,16 +1080,9 @@ def create_product_growth_ppt(group_results, month_title, logo_file=None, ly_mon
         prs.slide_width = Inches(13.33)
         prs.slide_height = Inches(7.5)
         
-        # Enhanced title slide text generation - ENSURE UPPERCASE
-        if ly_month and cy_month:
-            title_slide_text = f"PRODUCT GROWTH – LAST-YEAR: {ly_month.upper()} VS CURRENT-YEAR: {cy_month.upper()}"
-            logger.info(f"✅ Title with months: {title_slide_text}")
-        elif month_title and month_title != "Product Growth Analysis":
-            title_slide_text = f"PRODUCT GROWTH – {month_title.upper()}"
-            logger.info(f"✅ Title with custom title: {title_slide_text}")
-        else:
-            title_slide_text = "PRODUCT GROWTH ANALYSIS"
-            logger.info(f"✅ Default title: {title_slide_text}")
+        # Simplified title slide text generation - Always use "PRODUCT GROWTH REPORT"
+        title_slide_text = "PRODUCT GROWTH REPORT"
+        logger.info(f"✅ Title: {title_slide_text}")
         
         print(f"🔍 Creating Product Growth PPT: {title_slide_text}")
         
