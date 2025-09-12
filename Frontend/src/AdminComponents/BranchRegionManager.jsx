@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import api from "../api/axios";
 
-const BranchRegionManager = () => {
+const BranchRegionManager = forwardRef((props, ref) => {
   const [activeTab, setActiveTab] = useState("manual");
 
   // shared states
@@ -51,17 +51,35 @@ const BranchRegionManager = () => {
   }, [successMessage, errorMessage]);
 
   const fetchAll = async () => {
-    const [bRes, rRes, eRes, mRes] = await Promise.all([
-      api.get("/branches"),
-      api.get("/regions"),
-      api.get("/executives"),
-      api.get("/mappings"),
-    ]);
-    setBranches(bRes.data);
-    setRegions(rRes.data);
-    setExecutives(eRes.data);
-    setMappings(mRes.data);
+    try {
+      const [bRes, rRes, eRes, mRes] = await Promise.all([
+        api.get("/branches"),
+        api.get("/regions"),
+        api.get("/executives"),
+        api.get("/mappings"),
+      ]);
+      setBranches(bRes.data);
+      setRegions(rRes.data);
+      setExecutives(eRes.data);
+      setMappings(mRes.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setErrorMessage("Failed to fetch data. Please refresh the page.");
+    }
   };
+
+  // Expose refresh function to parent component
+  useImperativeHandle(ref, () => ({
+    refreshData: () => {
+      fetchAll();
+      // Reset any local states that might be affected by reset
+      setSelectedBranch("");
+      setSelectedRegion("");
+      setBranchExecs([]);
+      setRegionBranches([]);
+      setSuccessMessage("Data refreshed after mappings reset");
+    }
+  }));
 
   useEffect(() => {
     fetchAll();
@@ -168,8 +186,12 @@ const BranchRegionManager = () => {
   useEffect(() => {
     const fetchBranchExecs = async () => {
       if (selectedBranch) {
-        const res = await api.get(`/branch/${selectedBranch}/executives`);
-        setBranchExecs(res.data);  // already selected ones
+        try {
+          const res = await api.get(`/branch/${selectedBranch}/executives`);
+          setBranchExecs(res.data);  // already selected ones
+        } catch (error) {
+          console.error("Error fetching branch executives:", error);
+        }
       }
     };
     fetchBranchExecs();
@@ -179,8 +201,12 @@ const BranchRegionManager = () => {
   useEffect(() => {
     const fetchRegionBranches = async () => {
       if (selectedRegion) {
-        const res = await api.get(`/region/${selectedRegion}/branches`);
-        setRegionBranches(res.data); // already selected ones
+        try {
+          const res = await api.get(`/region/${selectedRegion}/branches`);
+          setRegionBranches(res.data); // already selected ones
+        } catch (error) {
+          console.error("Error fetching region branches:", error);
+        }
       }
     };
     fetchRegionBranches();
@@ -245,20 +271,16 @@ const BranchRegionManager = () => {
 
       <MessageDisplay />
 
-      {/* Tabs */}
-      <div className="flex mb-6">
+      {/* FIXED TABS - Both buttons always appear active */}
+      <div className="flex gap-4 mb-6">
         <button
-          className={`mr-4 px-4 py-2 rounded-t ${
-            activeTab === "manual" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
+          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           onClick={() => setActiveTab("manual")}
         >
           Manual Entry
         </button>
         <button
-          className={`px-4 py-2 rounded-t ${
-            activeTab === "upload" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
+          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
           onClick={() => setActiveTab("upload")}
         >
           File Upload
@@ -663,6 +685,9 @@ const BranchRegionManager = () => {
       )}
     </div>
   );
-};
+});
+
+// Add display name for easier debugging
+BranchRegionManager.displayName = "BranchRegionManager";
 
 export default BranchRegionManager;
