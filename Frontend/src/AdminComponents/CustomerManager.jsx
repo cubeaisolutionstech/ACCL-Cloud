@@ -26,6 +26,22 @@ const CustomerManager = ({ onDataUpdated }) => {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Safe render function for potentially nested objects
+  const safeRender = (value) => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === 'object') {
+      // If it's an object, try to extract a meaningful value
+      if (value.name) return String(value.name);
+      if (value.code) return String(value.code);
+      if (value.value) return String(value.value);
+      // Fallback to stringified object
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
   // Auto-hide messages after 5 seconds (matching BranchRegionManager)
   useEffect(() => {
     if (successMessage || errorMessage) {
@@ -200,8 +216,15 @@ const CustomerManager = ({ onDataUpdated }) => {
   const fetchExecs = async () => {
     try {
       const res = await api.get("/executives");
+      console.log("Executives response:", res.data); // Debug log
       setExecs(res.data);
-      if (res.data.length > 0) setSelectedExec(res.data[0].name);
+      if (res.data.length > 0) {
+        // Safe access to executive name
+        const firstExecName = typeof res.data[0].name === 'object' 
+          ? res.data[0].name.name || res.data[0].name.code || JSON.stringify(res.data[0].name)
+          : res.data[0].name;
+        setSelectedExec(firstExecName);
+      }
     } catch (error) {
       setErrorMessage("Failed to load executives list.");
       console.error("Error fetching executives:", error);
@@ -332,6 +355,14 @@ const CustomerManager = ({ onDataUpdated }) => {
     } finally {
       setLoadingAssign(false);
     }
+  };
+
+  // Safe get executive identifier
+  const getExecutiveId = (exec) => {
+    if (typeof exec.name === 'object') {
+      return exec.name?.name || exec.name?.code || JSON.stringify(exec.name);
+    }
+    return exec.name || exec.id || JSON.stringify(exec);
   };
 
   useEffect(() => {
@@ -475,9 +506,9 @@ const CustomerManager = ({ onDataUpdated }) => {
             onChange={(e) => setSelectedExec(e.target.value)}
             className="w-full md:w-1/3 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            {execs.map((exec) => (
-              <option key={exec.id} value={exec.name}>
-                {exec.name}
+            {execs.map((exec, index) => (
+              <option key={getExecutiveId(exec) || index} value={getExecutiveId(exec)}>
+                {safeRender(exec.name)}
               </option>
             ))}
           </select>
@@ -497,8 +528,8 @@ const CustomerManager = ({ onDataUpdated }) => {
                   {assignedCustomers.length === 0 ? (
                     <p className="text-gray-500 text-sm">No customers assigned yet.</p>
                   ) : (
-                    assignedCustomers.map((c) => (
-                      <label key={c} className="flex items-center py-1">
+                    assignedCustomers.map((c, index) => (
+                      <label key={c || index} className="flex items-center py-1">
                         <input
                           type="checkbox"
                           value={c}
@@ -512,7 +543,7 @@ const CustomerManager = ({ onDataUpdated }) => {
                           }
                           className="mr-2 rounded"
                         />
-                        <span className="text-sm">{c}</span>
+                        <span className="text-sm">{safeRender(c)}</span>
                       </label>
                     ))
                   )}
@@ -535,8 +566,8 @@ const CustomerManager = ({ onDataUpdated }) => {
               {unmappedCustomers.length === 0 ? (
                 <p className="text-gray-500 text-sm">All customers are assigned.</p>
               ) : (
-                unmappedCustomers.map((c) => (
-                  <label key={c} className="flex items-center py-1">
+                unmappedCustomers.map((c, index) => (
+                  <label key={c || index} className="flex items-center py-1">
                     <input
                       type="checkbox"
                       value={c}
@@ -550,7 +581,7 @@ const CustomerManager = ({ onDataUpdated }) => {
                       }
                       className="mr-2 rounded"
                     />
-                    <span className="text-sm">{c}</span>
+                    <span className="text-sm">{safeRender(c)}</span>
                   </label>
                 ))
               )}
