@@ -1397,7 +1397,7 @@ const ODTargetTab = ({ tabState, updateTabState, selectedFiles }) => {
            <button
              onClick={handleGenerateReport}
              disabled={tabState.loading || !tabState.columns.length || !tabState.filters.selectedYears.length}
-             className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+             className="bg-red-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
            >
              {tabState.loading ? 'Generating...' : 'Generate Report'}
            </button>
@@ -1413,7 +1413,7 @@ const ODTargetTab = ({ tabState, updateTabState, selectedFiles }) => {
                <button
                  onClick={handleDownloadPpt}
                  disabled={tabState.downloadingPpt}
-                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:bg-gray-400"
+                 className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
                >
                  {tabState.downloadingPpt ? 'Generating PPT...' : 'Download PPT'}
                </button>
