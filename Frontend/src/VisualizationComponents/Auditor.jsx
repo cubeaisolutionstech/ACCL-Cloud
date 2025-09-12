@@ -770,7 +770,7 @@ function Auditor() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>📊 ACL Extraction</h1>
+        <h1>📊 ACCL AUDITOR FORMAT </h1>
       </header>
 
       <div className="app-layout">
@@ -817,7 +817,7 @@ function Auditor() {
             </div>
 
             <div className="file-upload-item">
-              <label>Upload Total Sales Dataset</label>
+              <label>Upload Last Year Dataset</label>
               <input
                 type="file"
                 accept=".xlsx,.xls"
@@ -925,7 +925,7 @@ function Auditor() {
 
           {uploadedFiles.totalSales && (
             <div className="sidebar-section">
-              <h3 className="sidebar-title">📄 Total Sales Selection</h3>
+              <h3 className="sidebar-title">📄 Last Year Sheet Selection</h3>
               <select 
                 className="sheet-select"
                 onChange={(e) => setSelectedSheets(prev => ({ ...prev, totalSales: e.target.value }))}
