@@ -11,23 +11,36 @@ const ExecutiveManagement = () => {
   const [selectedRemove, setSelectedRemove] = useState("");
 
   const fetchExecutives = async () => {
-    const res = await axios.get("http://localhost:5000/api/executives-with-counts");
-    setExecutives(res.data);
+    try {
+      const res = await axios.get("http://localhost:5000/api/executives-with-counts");
+      console.log("API Response:", res.data); // Debug log
+      setExecutives(res.data);
+    } catch (error) {
+      console.error("Error fetching executives:", error);
+    }
   };
 
   const handleAdd = async () => {
     if (!name) return;
-    await api.post("/executive", { name, code });
-    setName("");
-    setCode("");
-    fetchExecutives();
+    try {
+      await api.post("/executive", { name, code });
+      setName("");
+      setCode("");
+      fetchExecutives();
+    } catch (error) {
+      console.error("Error adding executive:", error);
+    }
   };
 
   const handleRemove = async () => {
     if (selectedRemove) {
-      await api.delete(`/executive/${selectedRemove}`);
-      setSelectedRemove("");
-      fetchExecutives();
+      try {
+        await api.delete(`/executive/${selectedRemove}`);
+        setSelectedRemove("");
+        fetchExecutives();
+      } catch (error) {
+        console.error("Error removing executive:", error);
+      }
     }
   };
 
@@ -42,6 +55,30 @@ const ExecutiveManagement = () => {
     fetchExecutives();
   };
 
+  // Safe render function for potentially nested objects
+  const safeRender = (value) => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === 'object') {
+      // If it's an object, try to extract a meaningful value
+      if (value.name) return String(value.name);
+      if (value.code) return String(value.code);
+      if (value.value) return String(value.value);
+      // Fallback to stringified object
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
+  // Safe get executive identifier (for keys and values)
+  const getExecutiveId = (executive) => {
+    if (typeof executive.name === 'object') {
+      return executive.name?.name || executive.name?.code || JSON.stringify(executive.name);
+    }
+    return executive.name || executive.id || JSON.stringify(executive);
+  };
+
   useEffect(() => {
     fetchExecutives();
   }, []);
@@ -50,13 +87,13 @@ const ExecutiveManagement = () => {
     <div className="bg-white p-6 rounded shadow">
       <div className="flex gap-4 mb-4">
         <button
-          className={`px-4 py-2 rounded ${activeTab === "creation" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           onClick={() => handleTabChange("creation")}
         >
           Manual entry
         </button>
         <button
-          className={`px-4 py-2 rounded ${activeTab === "customers" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
           onClick={() => handleTabChange("customers")}
         >
           File upload
@@ -95,12 +132,12 @@ const ExecutiveManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {executives.map((e) => (
-                <tr key={e.name}>
-                  <td className="border p-2">{e.name}</td>
-                  <td className="border p-2">{e.code}</td>
-                  <td className="border p-2">{e.customers}</td>
-                  <td className="border p-2">{e.branches}</td>
+              {executives.map((e, index) => (
+                <tr key={getExecutiveId(e) || index}>
+                  <td className="border p-2">{safeRender(e.name)}</td>
+                  <td className="border p-2">{safeRender(e.code)}</td>
+                  <td className="border p-2">{safeRender(e.customers)}</td>
+                  <td className="border p-2">{safeRender(e.branches)}</td>
                 </tr>
               ))}
             </tbody>
@@ -114,9 +151,9 @@ const ExecutiveManagement = () => {
               className="border px-4 py-2 mr-4"
             >
               <option value="">Select Executive</option>
-              {executives.map((e) => (
-                <option key={e.name} value={e.name}>
-                  {e.name}
+              {executives.map((e, index) => (
+                <option key={getExecutiveId(e) || index} value={getExecutiveId(e)}>
+                  {safeRender(e.name)}
                 </option>
               ))}
             </select>
@@ -128,7 +165,7 @@ const ExecutiveManagement = () => {
       )}
 
       {activeTab === "customers" && (
-        <CustomerManager onDataUpdated={handleDataUpdated} /> /* ✅ Fixed closing parenthesis */
+        <CustomerManager onDataUpdated={handleDataUpdated} />
       )}
     </div>
   );
