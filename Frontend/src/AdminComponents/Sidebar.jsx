@@ -14,19 +14,19 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, onReset }) => {
     if (!window.confirm("⚠️ Are you sure you want to reset all mappings?")) return;
 
     try {
-      const { data } = await api.post("/reset-mappings");
+      const { data } = await api.post("/reset_all_mappings");
       if (data.success) {
-        alert(`✅ ${data.message}`);
+        alert(✅ ${data.message});
         if (onReset) onReset();
       } else {
-        alert(`❌ Failed: ${data.message}`);
+        alert(❌ Failed: ${data.message});
       }
     } catch (error) {
       console.error("Error resetting mappings:", error);
       alert("❌ Could not reset mappings. Check console for details.");
     }
   };
-
+  
   return (
     <div className="fixed top-0 left-0 h-screen w-64 bg-gray-800 text-white p-6 flex flex-col justify-between shadow-lg">
       <div>
