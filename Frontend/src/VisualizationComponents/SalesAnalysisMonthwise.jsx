@@ -13,7 +13,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const SalesAnalysisMonthwise = ({ 
   uploadedFiles, 
@@ -527,7 +527,7 @@ const SalesAnalysisMonthwise = ({
   return (
     <div className="sales-analysis-section">
       <div className="section-header">
-        <h2>📊 Sales Analysis Month-wise</h2>
+        <h2>Sales Analysis Month-wise</h2>
         <div className="header-actions">
           <button
             onClick={processSalesAnalysisWithSession}
@@ -576,7 +576,7 @@ const SalesAnalysisMonthwise = ({
       </div>
 
       <div className="preview-intro">
-        <h3>📊 Sales Analysis Tables</h3>
+        <h3> Sales Analysis Tables</h3>
         <p>Automatically processes month-wise sales data with product analysis totals integration</p>
         
         {/* Auto-export control */}
@@ -614,7 +614,7 @@ const SalesAnalysisMonthwise = ({
       <div className="tables-section">
         <div className="table-section">
           <div className="table-section-header">
-            <h4>🏭 SALES in MT</h4>
+            <h4> SALES in MT</h4>
             <div className="table-status">
               {salesMtData ? (
                 <span className="status-badge available">✅ Available ({salesMtData.shape[0]} records)</span>
@@ -648,7 +648,7 @@ const SalesAnalysisMonthwise = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>💰 SALES in Value</h4>
+            <h4> SALES in Value</h4>
             <div className="table-status">
               {salesValueData ? (
                 <span className="status-badge available">✅ Available ({salesValueData.shape[0]} records)</span>
