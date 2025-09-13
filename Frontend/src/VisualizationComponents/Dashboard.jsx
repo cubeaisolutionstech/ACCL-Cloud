@@ -16,7 +16,7 @@ const MONTH_ORDER = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'De
 const api = {
   testConnection: async () => {
     try {
-      const response = await axios.get("/app1/test", {
+      const response = await axios.get("http://localhost:5003/test", {
         timeout: 5000,
       });
       return response.data;
@@ -29,7 +29,7 @@ const api = {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await axios.post("/app1/upload", formData, {
+      const response = await axios.post("http://localhost:5003/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -43,7 +43,7 @@ const api = {
       } else if (error.response) {
         throw new Error(error.response.data.error || "Server error");
       } else if (error.request) {
-        throw new Error("Cannot connect to server. Make sure Flask backend is running on /app1");
+        throw new Error("Cannot connect to server. Make sure Flask backend is running on http://localhost:5003");
       } else {
         throw new Error("Upload failed: " + error.message);
       }
@@ -51,7 +51,7 @@ const api = {
   },
   processSheet: async (data) => {
     try {
-      const response = await axios.post("/app1/process-sheet", data, {
+      const response = await axios.post("http://localhost:5003/process-sheet", data, {
         timeout: 60000,
       });
       return response.data;
@@ -68,7 +68,7 @@ const api = {
   },
   generateVisualizations: async (data) => {
     try {
-      const response = await axios.post("/app1/visualizations", data, {
+      const response = await axios.post("http://localhost:5003/visualizations", data, {
         timeout: 60000,
       });
       return response.data;
@@ -85,7 +85,7 @@ const api = {
   },
   downloadCSV: async (data) => {
     try {
-      const response = await axios.post("/app1/download-csv", data, {
+      const response = await axios.post("http://localhost:5003/download-csv", data, {
         responseType: 'blob',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ const api = {
   },
   generatePPT: async (data) => {
     try {
-      const response = await axios.post("/app1/download-ppt", data, {
+      const response = await axios.post("http://localhost:5003/download-ppt", data, {
         responseType: 'blob',
         headers: {
           'Content-Type': 'application/json'
@@ -135,7 +135,7 @@ const api = {
       } else if (error.response) {
         throw new Error(error.response.data.error || "Server error");
       } else if (error.request) {
-        throw new Error("Cannot connect to server. Make sure Flask backend is running on /app1");
+        throw new Error("Cannot connect to server. Make sure Flask backend is running on http://localhost:5003");
       } else {
         throw new Error("PPT generation failed: " + error.message);
       }
@@ -143,7 +143,7 @@ const api = {
   },
   generateMasterPPT: async (data) => {
     try {
-      const response = await axios.post("/app1/download-master-ppt", data, {
+      const response = await axios.post("http://localhost:5003/download-master-ppt", data, {
         responseType: 'blob',
         headers: {
           'Content-Type': 'application/json'
@@ -158,7 +158,7 @@ const api = {
       } else if (error.response) {
         throw new Error(error.response.data.error || "Server error");
       } else if (error.request) {
-        throw new Error("Cannot connect to server. Make sure Flask backend is running on /app1");
+        throw new Error("Cannot connect to server. Make sure Flask backend is running on http://localhost:5003");
       } else {
         throw new Error("Master PPT generation failed: " + error.message);
       }
@@ -249,26 +249,33 @@ function Dashboard() {
       return header;
     };
     
-      const extractMonthYear = (colName) => {
-        const colStr = String(colName).trim();
-        if (colStr.startsWith('LY-')) {
-          return colStr; // Keep LY-Apr-24 format as-is
+    // UPDATED extractMonthYear function - this removes LY prefix from x-axis labels
+    const extractMonthYear = (colName) => {
+      const colStr = String(colName).trim();
+      
+      // Handle LY columns - extract month-year without LY prefix
+      if (colStr.startsWith('LY-')) {
+        const lyMatch = colStr.match(/LY-(\w{3})-(\d{2})/i);
+        if (lyMatch) {
+          return `${lyMatch[1]}-${lyMatch[2]}`; // Return just "Apr-24" instead of "LY-Apr-24"
         }
-        // Handle all YTD column formats
-        const ytdMatch = colStr.match(/(Budget|LY|Act|Gr|Ach)-YTD-(\d{2})-(\d{2})\((Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Jan|Feb|Mar) to (Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Jan|Feb|Mar)\)/i);
-        if (ytdMatch) {
-          return `${ytdMatch[1]}-YTD-${ytdMatch[2]}-${ytdMatch[3]}(${ytdMatch[4]}-${ytdMatch[5]})`;
-        }
-        
-        // Original month-year extraction for other columns
-        const monthMatch = colStr.match(/(apr|may|jun|jul|aug|sep|oct|nov|dec|jan|feb|mar)/i);
-        const yearMatch = colStr.match(/(\d{2,4})/);
-        
-        if (monthMatch && yearMatch) {
-          return `${monthMatch[0].charAt(0).toUpperCase() + monthMatch[0].slice(1).toLowerCase()}-${yearMatch[0].slice(-2)}`;
-        }
-        return colStr;
-      };
+      }
+      
+      // Handle all YTD column formats
+      const ytdMatch = colStr.match(/(Budget|LY|Act|Gr|Ach)-YTD-(\d{2})-(\d{2})\((Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Jan|Feb|Mar) to (Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Jan|Feb|Mar)\)/i);
+      if (ytdMatch) {
+        return `${ytdMatch[1]}-YTD-${ytdMatch[2]}-${ytdMatch[3]}(${ytdMatch[4]}-${ytdMatch[5]})`;
+      }
+      
+      // Original month-year extraction for other columns
+      const monthMatch = colStr.match(/(apr|may|jun|jul|aug|sep|oct|nov|dec|jan|feb|mar)/i);
+      const yearMatch = colStr.match(/(\d{2,4})/);
+      
+      if (monthMatch && yearMatch) {
+        return `${monthMatch[0].charAt(0).toUpperCase() + monthMatch[0].slice(1).toLowerCase()}-${yearMatch[0].slice(-2)}`;
+      }
+      return colStr;
+    };
     
       const safeConvertValue = (x) => {
         if (x === null || x === undefined || x === '' || String(x).toLowerCase() === 'nan') {
@@ -1860,7 +1867,7 @@ function Dashboard() {
             console.log("✅ Backend connection successful");
             setConnectionStatus("connected");
           } catch (error) {
-            setError("❌ Cannot connect to backend server. Please make sure Flask is running on /app1");
+            setError("❌ Cannot connect to backend server. Please make sure Flask is running on http://localhost:5003");
             console.error("❌ Backend connection failed:", error);
             setConnectionStatus("failed");
           }
