@@ -56,7 +56,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, onReset }) => {
 
         <button
           onClick={onLogout}
-          className="w-full bg-slate-600 text-white py-2 rounded-lg hover:bg-slate-700 text-sm font-semibold shadow transition-colors duration-200"
+          className="w-full bg-red-400 text-white py-2 rounded-lg hover:bg-red-500 text-sm font-semibold shadow transition-colors duration-200"
         >
           Logout
         </button>
