@@ -13,7 +13,7 @@ import {
   Info
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const EROPWAnalysis = ({ 
   uploadedFiles, 
@@ -455,8 +455,8 @@ const EROPWAnalysis = ({
     return (
       <div className="tables-preview-section">
         <div className="preview-intro">
-          <h3>📊 ERO-PW Analysis Tables (WEST)</h3>
-          <p>View both ERO-PW SALES in Tonage and SALES in Value tables generated from your data processing.</p>
+          <h3> ERO-PW Analysis Tables (WEST)</h3>
+          <p>View both ERO-PW SALES in Tonnage and SALES in Value tables generated from your data processing.</p>
           
           {/* Auto-export control */}
           <AutoExportToggle />
@@ -464,7 +464,7 @@ const EROPWAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>🏭 ERO-PW SALES in Tonage Table</h4>
+            <h4> ERO-PW SALES in Tonnage Table</h4>
             <div className="table-status">
               {eroPwData.mt_data ? (
                 <span className="status-badge available">✅ Available ({eroPwData.mt_data.length} records)</span>
@@ -499,7 +499,7 @@ const EROPWAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>💰 ERO-PW SALES in Value Table</h4>
+            <h4> ERO-PW SALES in Value Table</h4>
             <div className="table-status">
               {eroPwData.value_data ? (
                 <span className="status-badge available">✅ Available ({eroPwData.value_data.length} records)</span>
@@ -531,7 +531,7 @@ const EROPWAnalysis = ({
         </div>
 
         <div className="tables-summary">
-          <h4>📊 ERO-PW Analysis Export</h4>
+          <h4> ERO-PW Analysis Export</h4>
           {(eroPwData.mt_data || eroPwData.value_data) && (
             <div className="export-merged-section">
               <div className="export-actions">
@@ -555,7 +555,7 @@ const EROPWAnalysis = ({
   return (
     <div className="eropw-analysis-section">
       <div className="section-header">
-        <h2>📊 ERO-PW Analysis (WEST)</h2>
+        <h2> ERO-PW Analysis (WEST)</h2>
         <div className="header-actions">
           <button
             onClick={processEroPwData}
@@ -582,7 +582,7 @@ const EROPWAnalysis = ({
           <Package className="stat-icon" />
           <div>
             <span className="stat-number">{eroPwData.mt_data?.length || 0}</span>
-            <span className="stat-label">ERO-PW Tonage Records</span>
+            <span className="stat-label">ERO-PW Tonnage Records</span>
           </div>
         </div>
         <div className="stat-card">
@@ -610,8 +610,8 @@ const EROPWAnalysis = ({
           disabled={!eroPwData.mt_data && !processing}
         >
           <Package size={16} />
-          SALES in Tonage
-          {eroPwData.mt_data && <span className="data-indicator">●</span>}
+          SALES in Tonnage
+          {eroPwData.mt_data && <span className="data-indicator"></span>}
         </button>
         <button
           className={`sub-tab ${activeSubTab === 'value' ? 'active' : ''}`}
@@ -620,7 +620,7 @@ const EROPWAnalysis = ({
         >
           <TrendingUp size={16} />
           SALES in Value
-          {eroPwData.value_data && <span className="data-indicator">●</span>}
+          {eroPwData.value_data && <span className="data-indicator"></span>}
         </button>
         <button
           className={`sub-tab ${activeSubTab === 'tables' ? 'active' : ''}`}
@@ -628,7 +628,7 @@ const EROPWAnalysis = ({
         >
           <Eye size={16} />
           Tables Preview
-          {getEroPwFiles().length > 0 && <span className="data-indicator">●</span>}
+          {getEroPwFiles().length > 0 && <span className="data-indicator"></span>}
         </button>
       </nav>
 
@@ -645,11 +645,11 @@ const EROPWAnalysis = ({
             ) : (
               <div className="empty-state">
                 <Package size={48} />
-                <h3>No Tonage analysis data</h3>
+                <h3>No Tonnage analysis data</h3>
                 <p>
                   {!canProcess() ? 
                     "Upload Budget file to start analysis" :
-                    "Click 'Refresh Analysis' to generate Tonage data"
+                    "Click 'Refresh Analysis' to generate Tonnage data"
                   }
                 </p>
                 {canProcess() && (
@@ -659,7 +659,7 @@ const EROPWAnalysis = ({
                     disabled={loading || processing}
                   >
                     <Package size={16} />
-                    Generate Tonage Analysis
+                    Generate Tonnage Analysis
                   </button>
                 )}
               </div>
