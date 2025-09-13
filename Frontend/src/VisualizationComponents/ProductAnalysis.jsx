@@ -15,7 +15,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const ProductAnalysis = ({ 
   uploadedFiles, 
@@ -640,8 +640,8 @@ const ProductAnalysis = ({
     return (
       <div className="tables-preview-section">
         <div className="preview-intro">
-          <h3>📦 Product-wise Analysis Tables</h3>
-          <p>View both Product-wise SALES in Tonage and SALES in Value tables generated from your data processing.</p>
+          <h3> Product-wise Analysis Tables</h3>
+          <p>View both Product-wise SALES in Tonnage and SALES in Value tables generated from your data processing.</p>
           
           <div className="auto-export-control">
             <label className="toggle-label">
@@ -662,7 +662,7 @@ const ProductAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>🏭 Product-wise SALES in Tonage Table</h4>
+            <h4> Product-wise SALES in Tonage Table</h4>
             <div className="table-status">
               {productData.mt ? (
                 <span className="status-badge available">✅ Available ({productData.mt?.data?.length || 0} products)</span>
@@ -706,7 +706,7 @@ const ProductAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>💰 Product-wise SALES in Value Table</h4>
+            <h4>Product-wise SALES in Value Table</h4>
             <div className="table-status">
               {productData.value ? (
                 <span className="status-badge available">✅ Available ({productData.value?.data?.length || 0} products)</span>
@@ -747,7 +747,7 @@ const ProductAnalysis = ({
         </div>
 
         <div className="tables-summary">
-          <h4>📊 Product Analysis Export</h4>
+          <h4> Product Analysis Export</h4>
           {(productData.mt || productData.value) ? (
             <div className="export-merged-section">
               <div className="export-actions">
@@ -905,7 +905,7 @@ const ProductAnalysis = ({
   return (
     <div className="product-analysis-section">
       <div className="section-header">
-        <h2>📦 Product-wise Analysis</h2>
+        <h2> Product-wise Analysis</h2>
         <div className="header-actions">
           <button
             onClick={() => processProductAnalysis('both')}
@@ -959,8 +959,8 @@ const ProductAnalysis = ({
           onClick={() => setActiveSubTab('mt')}
         >
           <Package size={16} />
-          SALES in Tonage
-          {productData.mt && <span className="data-indicator">●</span>}
+          SALES in Tonnage
+          {productData.mt && <span className="data-indicator"></span>}
         </button>
         <button
           className={`sub-tab ${activeSubTab === 'value' ? 'active' : ''}`}
@@ -968,7 +968,7 @@ const ProductAnalysis = ({
         >
           <Package size={16} />
           SALES in Value
-          {productData.value && <span className="data-indicator">●</span>}
+          {productData.value && <span className="data-indicator"></span>}
         </button>
         <button
           className={`sub-tab ${activeSubTab === 'tables' ? 'active' : ''}`}
@@ -976,7 +976,7 @@ const ProductAnalysis = ({
         >
           <Eye size={16} />
           Tables Preview
-          {getProductFiles().length > 0 && <span className="data-indicator">●</span>}
+          {getProductFiles().length > 0 && <span className="data-indicator"></span>}
         </button>
       </nav>
 
@@ -986,7 +986,7 @@ const ProductAnalysis = ({
             {productData.mt ? (
               <DataTable
                 data={productData.mt}
-                title={`Product-wise Budget and Actual Tonage (Month-wise) [${fiscalInfo.current_year || '25-26'}]`}
+                title={`Product-wise Budget and Actual Tonnage (Month-wise) [${fiscalInfo.current_year || '25-26'}]`}
                 analysisType="mt"
               />
             ) : (
