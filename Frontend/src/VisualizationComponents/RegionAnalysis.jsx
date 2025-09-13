@@ -15,7 +15,7 @@ import {
   Info
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const RegionAnalysis = ({ 
   uploadedFiles, 
@@ -436,7 +436,7 @@ const RegionAnalysis = ({
 
         {showRegionalHighlights && (
           <div className="regional-legend">
-            <h5>🏢 Regional Classifications:</h5>
+            <h5>Regional Classifications:</h5>
             <div className="legend-items">
               <div className="legend-item north-legend">
                 <span className="legend-dot north-dot"></span>
@@ -531,7 +531,7 @@ const RegionAnalysis = ({
     return (
       <div className="tables-preview-section">
         <div className="preview-intro">
-          <h3>🌍 Region-wise Analysis Tables</h3>
+          <h3>Region-wise Analysis Tables</h3>
           <p>View both Region-wise SALES in Quantity and SALES in Value tables generated from your data processing.</p>
           
           <AutoExportToggle />
@@ -553,7 +553,7 @@ const RegionAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>📊 Region-wise SALES in Quantity Table</h4>
+            <h4> Region-wise SALES in Quantity Table</h4>
             <div className="table-status">
               {regionData.mt ? (
                 <span className="status-badge available">✅ Available ({regionData.mt?.data?.length || 0} regions)</span>
@@ -587,7 +587,7 @@ const RegionAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>💰 Region-wise SALES in Value Table</h4>
+            <h4>Region-wise SALES in Value Table</h4>
             <div className="table-status">
               {regionData.value ? (
                 <span className="status-badge available">✅ Available ({regionData.value?.data?.length || 0} regions)</span>
@@ -641,7 +641,7 @@ const RegionAnalysis = ({
   return (
     <div className="region-analysis-section">
       <div className="section-header">
-        <h2>🌍 Region-wise Analysis</h2>
+        <h2> Region-wise Analysis</h2>
         <div className="header-actions">
           <button
             onClick={() => processRegionAnalysis('both')}
@@ -696,7 +696,7 @@ const RegionAnalysis = ({
         >
           <MapPin size={16} />
           SALES in MT
-          {regionData.mt && <span className="data-indicator">●</span>}
+          {regionData.mt && <span className="data-indicator"></span>}
         </button>
         <button
           className={`sub-tab ${activeSubTab === 'value' ? 'active' : ''}`}
@@ -705,7 +705,7 @@ const RegionAnalysis = ({
         >
           <TrendingUp size={16} />
           SALES in Value
-          {regionData.value && <span className="data-indicator">●</span>}
+          {regionData.value && <span className="data-indicator"></span>}
         </button>
         <button
           className={`sub-tab ${activeSubTab === 'tables' ? 'active' : ''}`}
@@ -713,7 +713,7 @@ const RegionAnalysis = ({
         >
           <Eye size={16} />
           Tables Preview
-          {storedFiles.some(f => f.type && f.type.includes('region')) && <span className="data-indicator">●</span>}
+          {storedFiles.some(f => f.type && f.type.includes('region')) && <span className="data-indicator"></span>}
         </button>
       </nav>
 
