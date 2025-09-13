@@ -14,7 +14,7 @@ import {
   Info
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const TSPWAnalysis = ({ 
   uploadedFiles, 
@@ -458,7 +458,7 @@ const TSPWAnalysis = ({
     return (
       <div className="tables-preview-section">
         <div className="preview-intro">
-          <h3>📊 TS-PW Analysis Tables (NORTH)</h3>
+          <h3> TS-PW Analysis Tables (NORTH)</h3>
           <p>View both TS-PW SALES in Tonage and SALES in Value tables generated from your data processing.</p>
           
           {/* Auto-export control */}
@@ -467,7 +467,7 @@ const TSPWAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>🏭 TS-PW SALES in Tonage Table</h4>
+            <h4>TS-PW SALES in Tonnage Table</h4>
             <div className="table-status">
               {tsPwData.mt_data ? (
                 <span className="status-badge available">✅ Available ({tsPwData.shape.mt[0]} records)</span>
@@ -486,7 +486,7 @@ const TSPWAnalysis = ({
           ) : (
             <div className="table-empty-state">
               <Package size={48} />
-              <h4>No TS-PW Tonage Data Available</h4>
+              <h4>No TS-PW Tonnage Data Available</h4>
               <p>
                 {!canProcess() ? 
                   "Upload Budget file to start analysis" :
@@ -501,7 +501,7 @@ const TSPWAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>💰 TS-PW SALES in Value Table</h4>
+            <h4> TS-PW SALES in Value Table</h4>
             <div className="table-status">
               {tsPwData.value_data ? (
                 <span className="status-badge available">✅ Available ({tsPwData.shape.value[0]} records)</span>
@@ -532,7 +532,7 @@ const TSPWAnalysis = ({
         </div>
 
         <div className="tables-summary">
-          <h4>📊 TS-PW Analysis Export</h4>
+          <h4> TS-PW Analysis Export</h4>
           {(tsPwData.mt_data || tsPwData.value_data) && (
             <div className="export-merged-section">
               <div className="export-actions">
@@ -556,7 +556,7 @@ const TSPWAnalysis = ({
   return (
     <div className="tspw-analysis-section">
       <div className="section-header">
-        <h2>📊 TS-PW Analysis (NORTH)</h2>
+        <h2> TS-PW Analysis (NORTH)</h2>
         <div className="header-actions">
           <button
             onClick={processTsPwData}
@@ -583,7 +583,7 @@ const TSPWAnalysis = ({
           <Package className="stat-icon" />
           <div>
             <span className="stat-number">{tsPwData.shape.mt[0]}</span>
-            <span className="stat-label">TS-PW Tonage Records</span>
+            <span className="stat-label">TS-PW Tonnage Records</span>
           </div>
         </div>
         <div className="stat-card">
@@ -611,8 +611,8 @@ const TSPWAnalysis = ({
           disabled={!tsPwData.mt_data && !processing}
         >
           <Package size={16} />
-          SALES in Tonage
-          {tsPwData.mt_data && <span className="data-indicator">●</span>}
+          SALES in Tonnage
+          {tsPwData.mt_data && <span className="data-indicator"></span>}
         </button>
         <button
           className={`sub-tab ${activeSubTab === 'value' ? 'active' : ''}`}
@@ -621,7 +621,7 @@ const TSPWAnalysis = ({
         >
           <TrendingUp size={16} />
           SALES in Value
-          {tsPwData.value_data && <span className="data-indicator">●</span>}
+          {tsPwData.value_data && <span className="data-indicator"></span>}
         </button>
         <button
           className={`sub-tab ${activeSubTab === 'tables' ? 'active' : ''}`}
@@ -629,7 +629,7 @@ const TSPWAnalysis = ({
         >
           <Eye size={16} />
           Tables Preview
-          {getTsPwFiles().length > 0 && <span className="data-indicator">●</span>}
+          {getTsPwFiles().length > 0 && <span className="data-indicator"></span>}
         </button>
       </nav>
 
@@ -639,7 +639,7 @@ const TSPWAnalysis = ({
             {tsPwData.mt_data ? (
               <DataTable
                 data={tsPwData.mt_data}
-                title={`TS-PW Monthly Budget and Actual Tonage (NORTH) [${fiscalInfo.current_year || tsPwData.fiscal_year || '25-26'}]`}
+                title={`TS-PW Monthly Budget and Actual Tonnage (NORTH) [${fiscalInfo.current_year || tsPwData.fiscal_year || '25-26'}]`}
                 analysisType="mt"
               />
             ) : (
