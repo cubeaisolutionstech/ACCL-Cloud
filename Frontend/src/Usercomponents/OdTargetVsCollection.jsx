@@ -78,7 +78,7 @@ const OdTargetVsCollection = () => {
   // Fetch sheet names for all 3 files
   const fetchSheetNames = async () => {
     const load = async (filename) => {
-      const res = await axios.post('/api/branch/sheets', { filename });
+      const res = await axios.post('http://localhost:5000/api/branch/sheets', { filename });
       return res.data.sheets || [];
     };
     const [osPrevSheets, osCurrSheets, salesSheets] = await Promise.all([
@@ -107,7 +107,7 @@ const OdTargetVsCollection = () => {
     setLoadingColumns(true);
     try {
       const getCols = async (filename, sheet, header) => {
-        const res = await axios.post('/api/branch/get_columns', {
+        const res = await axios.post('http://localhost:5000/api/branch/get_columns', {
           filename, sheet_name: sheet, header
         });
         return res.data.columns || [];
@@ -121,14 +121,14 @@ const OdTargetVsCollection = () => {
 
       setColumns({ osPrev: osPrevCols, osCurr: osCurrCols, sales: salesCols });
 
-      const res = await axios.post('/api/branch/get_od_columns', {
+      const res = await axios.post('http://localhost:5000/api/branch/get_od_columns', {
         os_prev_columns: osPrevCols,
         os_curr_columns: osCurrCols,
         sales_columns: salesCols
       });
 
       const fetchFilters = async (mappingData) => {
-        const res = await axios.post('/api/branch/get_od_filter_options', {
+        const res = await axios.post('http://localhost:5000/api/branch/get_od_filter_options', {
           os_prev_filename: selectedFiles.osPrevFile,
           os_curr_filename: selectedFiles.osCurrFile,
           sales_filename: selectedFiles.salesFile,
@@ -160,7 +160,7 @@ const OdTargetVsCollection = () => {
 
   const fetchMonths = async (dateCol) => {
     try {
-      const res = await axios.post('/api/branch/extract_months', {
+      const res = await axios.post('http://localhost:5000/api/branch/extract_months', {
         sales_filename: selectedFiles.salesFile,
         sales_sheet: selectedSheet.sales,
         sales_header: headers.sales,
@@ -293,7 +293,7 @@ const OdTargetVsCollection = () => {
 
       console.log("OD API Payload", payload);
 
-      const res = await axios.post('/api/branch/calculate_od_target', payload);
+      const res = await axios.post('http://localhost:5000/api/branch/calculate_od_target', payload);
 
       console.log("OD API Response:", res.data);
 
@@ -707,7 +707,7 @@ const OdTargetVsCollection = () => {
                 };
 
                 const res = await axios.post(
-                  '/api/branch/download_od_ppt',
+                  'http://localhost:5000/api/branch/download_od_ppt',
                   payload,
                   { responseType: 'blob' }
                 );
