@@ -61,11 +61,9 @@ const ExecutiveManagement = () => {
       return "";
     }
     if (typeof value === 'object') {
-      // If it's an object, try to extract a meaningful value
       if (value.name) return String(value.name);
       if (value.code) return String(value.code);
       if (value.value) return String(value.value);
-      // Fallback to stringified object
       return JSON.stringify(value);
     }
     return String(value);
@@ -85,15 +83,16 @@ const ExecutiveManagement = () => {
 
   return (
     <div className="bg-white p-6 rounded shadow">
+      {/* Buttons - now always gray */}
       <div className="flex gap-4 mb-4">
         <button
-          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 rounded bg-gray-300 text-black hover:bg-gray-400 transition-colors"
           onClick={() => handleTabChange("creation")}
         >
           Manual entry
         </button>
         <button
-          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
+          className="px-4 py-2 rounded bg-gray-300 text-black hover:bg-gray-400 transition-colors"
           onClick={() => handleTabChange("customers")}
         >
           File upload
