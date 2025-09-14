@@ -430,41 +430,14 @@ const EROPWAnalysis = ({
     );
   };
 
-  // Auto-export control component
-  const AutoExportToggle = () => (
-    <div className="auto-export-control">
-      <label className="toggle-label">
-        <input
-          type="checkbox"
-          checked={autoExportEnabled}
-          onChange={(e) => setAutoExportEnabled(e.target.checked)}
-          className="toggle-input"
-        />
-        <span className="toggle-switch"></span>
-        Auto-generate single-sheet Excel file for Combined Data Manager
-      </label>
-      <small className="toggle-help">
-        When enabled, only the latest combined ERO-PW Excel file with both tables in single sheet is automatically generated and stored (replaces previous files)
-      </small>
-    </div>
-  );
-
   const TablesPreviewTab = () => {
     const eroPwFiles = getEroPwFiles();
     
     return (
       <div className="tables-preview-section">
-        <div className="preview-intro">
-          <h3> ERO-PW Analysis Tables (WEST)</h3>
-          <p>View both ERO-PW SALES in Tonnage and SALES in Value tables generated from your data processing.</p>
-          
-          {/* Auto-export control */}
-          <AutoExportToggle />
-        </div>
-
         <div className="table-section">
           <div className="table-section-header">
-            <h4> ERO-PW SALES in Tonnage Table</h4>
+            <h4> ERO-PW SALES in Tonage Table</h4>
             <div className="table-status">
               {eroPwData.mt_data ? (
                 <span className="status-badge available">✅ Available ({eroPwData.mt_data.length} records)</span>
@@ -582,7 +555,7 @@ const EROPWAnalysis = ({
           <Package className="stat-icon" />
           <div>
             <span className="stat-number">{eroPwData.mt_data?.length || 0}</span>
-            <span className="stat-label">ERO-PW Tonnage Records</span>
+            <span className="stat-label">ERO-PW Tonage Records</span>
           </div>
         </div>
         <div className="stat-card">
@@ -610,7 +583,7 @@ const EROPWAnalysis = ({
           disabled={!eroPwData.mt_data && !processing}
         >
           <Package size={16} />
-          SALES in Tonnage
+          SALES in Tonage
           {eroPwData.mt_data && <span className="data-indicator"></span>}
         </button>
         <button
@@ -645,11 +618,11 @@ const EROPWAnalysis = ({
             ) : (
               <div className="empty-state">
                 <Package size={48} />
-                <h3>No Tonnage analysis data</h3>
+                <h3>No Tonage analysis data</h3>
                 <p>
                   {!canProcess() ? 
                     "Upload Budget file to start analysis" :
-                    "Click 'Refresh Analysis' to generate Tonnage data"
+                    "Click 'Refresh Analysis' to generate Tonage data"
                   }
                 </p>
                 {canProcess() && (
@@ -659,7 +632,7 @@ const EROPWAnalysis = ({
                     disabled={loading || processing}
                   >
                     <Package size={16} />
-                    Generate Tonnage Analysis
+                    Generate Tonage Analysis
                   </button>
                 )}
               </div>
@@ -874,87 +847,6 @@ const EROPWAnalysis = ({
 
         .tables-preview-section {
           padding: 0;
-        }
-
-        .preview-intro {
-          text-align: center;
-          margin-bottom: 30px;
-          padding: 24px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border-radius: 8px;
-        }
-
-        .preview-intro h3 {
-          margin: 0 0 10px 0;
-          font-size: 24px;
-          font-weight: 600;
-        }
-
-        .preview-intro p {
-          margin: 0 0 20px 0;
-          font-size: 16px;
-          opacity: 0.9;
-        }
-
-        .auto-export-control {
-          margin: 24px 0;
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .toggle-label {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-          color: white;
-        }
-
-        .toggle-input {
-          display: none;
-        }
-
-        .toggle-switch {
-          position: relative;
-          width: 44px;
-          height: 24px;
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 12px;
-          transition: background 0.3s ease;
-        }
-
-        .toggle-switch::before {
-          content: '';
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          width: 20px;
-          height: 20px;
-          background: white;
-          border-radius: 50%;
-          transition: transform 0.3s ease;
-        }
-
-        .toggle-input:checked + .toggle-switch {
-          background: rgba(255, 255, 255, 0.6);
-        }
-
-        .toggle-input:checked + .toggle-switch::before {
-          transform: translateX(20px);
-        }
-
-        .toggle-help {
-          display: block;
-          margin-top: 8px;
-          color: rgba(255, 255, 255, 0.8);
-          font-size: 12px;
-          font-style: italic;
-          line-height: 1.4;
         }
 
         .table-section {
@@ -1397,14 +1289,6 @@ const EROPWAnalysis = ({
           .sub-tab {
             padding: 12px 16px;
             font-size: 13px;
-          }
-
-          .preview-intro {
-            padding: 20px;
-          }
-
-          .preview-intro h3 {
-            font-size: 20px;
           }
 
           .tables-summary {
