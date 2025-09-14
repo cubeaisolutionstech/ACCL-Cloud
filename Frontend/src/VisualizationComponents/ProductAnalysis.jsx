@@ -639,26 +639,7 @@ const ProductAnalysis = ({
     
     return (
       <div className="tables-preview-section">
-        <div className="preview-intro">
-          <h3> Product-wise Analysis Tables</h3>
-          <p>View both Product-wise SALES in Tonnage and SALES in Value tables generated from your data processing.</p>
-          
-          <div className="auto-export-control">
-            <label className="toggle-label">
-              <input
-                type="checkbox"
-                checked={autoExportEnabled}
-                onChange={(e) => setAutoExportEnabled(e.target.checked)}
-                className="toggle-input"
-              />
-              <span className="toggle-switch"></span>
-              Auto-generate single-sheet Excel file for Combined Data Manager
-            </label>
-            <small className="toggle-help">
-              When enabled, only the latest combined product Excel file with both tables in single sheet is automatically generated and stored (replaces previous files)
-            </small>
-          </div>
-        </div>
+        {/* Removed the violet/purple gradient preview-intro section */}
 
         <div className="table-section">
           <div className="table-section-header">
@@ -788,7 +769,7 @@ const ProductAnalysis = ({
       <div className="initial-state-header">
         <Package size={64} />
         <h3>Welcome to Product-wise Analysis</h3>
-        <p>Analyze your products' sales performance across tonnage and value metrics with detailed month-wise breakdown and fiscal year comparisons.</p>
+        <p>Analyze your products' sales performance across tonage and value metrics with detailed month-wise breakdown and fiscal year comparisons.</p>
       </div>
 
                 <div className="requirements-checklist">
@@ -959,7 +940,7 @@ const ProductAnalysis = ({
           onClick={() => setActiveSubTab('mt')}
         >
           <Package size={16} />
-          SALES in Tonnage
+          SALES in Tonage
           {productData.mt && <span className="data-indicator"></span>}
         </button>
         <button
@@ -986,7 +967,7 @@ const ProductAnalysis = ({
             {productData.mt ? (
               <DataTable
                 data={productData.mt}
-                title={`Product-wise Budget and Actual Tonnage (Month-wise) [${fiscalInfo.current_year || '25-26'}]`}
+                title={`Product-wise Budget and Actual Tonage (Month-wise) [${fiscalInfo.current_year || '25-26'}]`}
                 analysisType="mt"
               />
             ) : (
@@ -1396,87 +1377,6 @@ const ProductAnalysis = ({
 
         .tables-preview-section {
           padding: 0;
-        }
-
-        .preview-intro {
-          text-align: center;
-          margin-bottom: 30px;
-          padding: 24px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border-radius: 8px;
-        }
-
-        .preview-intro h3 {
-          margin: 0 0 10px 0;
-          font-size: 24px;
-          font-weight: 600;
-        }
-
-        .preview-intro p {
-          margin: 0 0 20px 0;
-          font-size: 16px;
-          opacity: 0.9;
-        }
-
-        .auto-export-control {
-          margin: 24px 0;
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .toggle-label {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-          color: white;
-        }
-
-        .toggle-input {
-          display: none;
-        }
-
-        .toggle-switch {
-          position: relative;
-          width: 44px;
-          height: 24px;
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 12px;
-          transition: background 0.3s ease;
-        }
-
-        .toggle-switch::before {
-          content: '';
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          width: 20px;
-          height: 20px;
-          background: white;
-          border-radius: 50%;
-          transition: transform 0.3s ease;
-        }
-
-        .toggle-input:checked + .toggle-switch {
-          background: rgba(255, 255, 255, 0.6);
-        }
-
-        .toggle-input:checked + .toggle-switch::before {
-          transform: translateX(20px);
-        }
-
-        .toggle-help {
-          display: block;
-          margin-top: 8px;
-          color: rgba(255, 255, 255, 0.8);
-          font-size: 12px;
-          font-style: italic;
-          line-height: 1.4;
         }
 
         .table-section {
