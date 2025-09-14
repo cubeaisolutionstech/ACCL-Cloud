@@ -53,7 +53,7 @@ const TSPWAnalysis = ({
     return uploadedFiles.budget && selectedSheets.budget;
   }, [uploadedFiles.budget, selectedSheets.budget]);
 
-  // UPDATED: Store file in session function - Latest only storage pattern
+  // Store file in session function - Latest only storage pattern
   const storeFileInSession = useCallback(async (fileBlob, fileName, analysisType, fileDescription) => {
     try {
       const timestamp = new Date().toISOString();
@@ -433,41 +433,14 @@ const TSPWAnalysis = ({
     );
   };
 
-  // Auto-export toggle component
-  const AutoExportToggle = () => (
-    <div className="auto-export-control">
-      <label className="toggle-label">
-        <input
-          type="checkbox"
-          checked={autoExportEnabled}
-          onChange={(e) => setAutoExportEnabled(e.target.checked)}
-          className="toggle-input"
-        />
-        <span className="toggle-switch"></span>
-        Auto-generate and store combined Excel file
-      </label>
-      <small className="toggle-help">
-        When enabled, the latest combined TS-PW Excel file will be automatically generated and stored
-      </small>
-    </div>
-  );
-
   const TablesPreviewTab = () => {
     const tsPwFiles = getTsPwFiles();
     
     return (
       <div className="tables-preview-section">
-        <div className="preview-intro">
-          <h3> TS-PW Analysis Tables (NORTH)</h3>
-          <p>View both TS-PW SALES in Tonage and SALES in Value tables generated from your data processing.</p>
-          
-          {/* Auto-export control */}
-          <AutoExportToggle />
-        </div>
-
         <div className="table-section">
           <div className="table-section-header">
-            <h4>TS-PW SALES in Tonnage Table</h4>
+            <h4>TS-PW SALES in Tonage Table</h4>
             <div className="table-status">
               {tsPwData.mt_data ? (
                 <span className="status-badge available">✅ Available ({tsPwData.shape.mt[0]} records)</span>
@@ -486,7 +459,7 @@ const TSPWAnalysis = ({
           ) : (
             <div className="table-empty-state">
               <Package size={48} />
-              <h4>No TS-PW Tonnage Data Available</h4>
+              <h4>No TS-PW Tonage Data Available</h4>
               <p>
                 {!canProcess() ? 
                   "Upload Budget file to start analysis" :
@@ -583,7 +556,7 @@ const TSPWAnalysis = ({
           <Package className="stat-icon" />
           <div>
             <span className="stat-number">{tsPwData.shape.mt[0]}</span>
-            <span className="stat-label">TS-PW Tonnage Records</span>
+            <span className="stat-label">TS-PW Tonage Records</span>
           </div>
         </div>
         <div className="stat-card">
@@ -611,7 +584,7 @@ const TSPWAnalysis = ({
           disabled={!tsPwData.mt_data && !processing}
         >
           <Package size={16} />
-          SALES in Tonnage
+          SALES in Tonage
           {tsPwData.mt_data && <span className="data-indicator"></span>}
         </button>
         <button
@@ -639,7 +612,7 @@ const TSPWAnalysis = ({
             {tsPwData.mt_data ? (
               <DataTable
                 data={tsPwData.mt_data}
-                title={`TS-PW Monthly Budget and Actual Tonnage (NORTH) [${fiscalInfo.current_year || tsPwData.fiscal_year || '25-26'}]`}
+                title={`TS-PW Monthly Budget and Actual Tonage (NORTH) [${fiscalInfo.current_year || tsPwData.fiscal_year || '25-26'}]`}
                 analysisType="mt"
               />
             ) : (
@@ -862,9 +835,11 @@ const TSPWAnalysis = ({
         }
 
         .data-indicator {
-          color: #28a745;
-          font-size: 18px;
-          line-height: 1;
+          width: 8px;
+          height: 8px;
+          background: #28a745;
+          border-radius: 50%;
+          margin-left: 4px;
         }
 
         .sub-tab-content {
@@ -873,87 +848,6 @@ const TSPWAnalysis = ({
 
         .tables-preview-section {
           padding: 0;
-        }
-
-        .preview-intro {
-          text-align: center;
-          margin-bottom: 30px;
-          padding: 24px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border-radius: 8px;
-        }
-
-        .preview-intro h3 {
-          margin: 0 0 10px 0;
-          font-size: 24px;
-          font-weight: 600;
-        }
-
-        .preview-intro p {
-          margin: 0 0 20px 0;
-          font-size: 16px;
-          opacity: 0.9;
-        }
-
-        .auto-export-control {
-          margin: 24px 0;
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .toggle-label {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-          color: white;
-        }
-
-        .toggle-input {
-          display: none;
-        }
-
-        .toggle-switch {
-          position: relative;
-          width: 44px;
-          height: 24px;
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 12px;
-          transition: background 0.3s ease;
-        }
-
-        .toggle-switch::before {
-          content: '';
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          width: 20px;
-          height: 20px;
-          background: white;
-          border-radius: 50%;
-          transition: transform 0.3s ease;
-        }
-
-        .toggle-input:checked + .toggle-switch {
-          background: rgba(255, 255, 255, 0.6);
-        }
-
-        .toggle-input:checked + .toggle-switch::before {
-          transform: translateX(20px);
-        }
-
-        .toggle-help {
-          display: block;
-          margin-top: 8px;
-          color: rgba(255, 255, 255, 0.8);
-          font-size: 12px;
-          font-style: italic;
-          line-height: 1.4;
         }
 
         .table-section {
@@ -1372,14 +1266,6 @@ const TSPWAnalysis = ({
           .sub-tab {
             padding: 12px 16px;
             font-size: 13px;
-          }
-
-          .preview-intro {
-            padding: 20px;
-          }
-
-          .preview-intro h3 {
-            font-size: 20px;
           }
 
           .tables-summary {
