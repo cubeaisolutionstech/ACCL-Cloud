@@ -239,15 +239,16 @@ const CompanyProductManager = () => {
 
       <MessageDisplay />
 
+      {/* UPDATED GRAY TABS - NOW CONSISTENT WITH OTHER COMPONENTS */}
       <div className="flex gap-4 mb-6">
         <button
-          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 rounded bg-gray-300 text-black hover:bg-gray-400 transition-colors"
           onClick={() => setActiveTab("manual")}
         >
           Manual Entry
         </button>
         <button
-          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
+          className="px-4 py-2 rounded bg-gray-300 text-black hover:bg-gray-400 transition-colors"
           onClick={() => setActiveTab("upload")}
         >
           File Upload
