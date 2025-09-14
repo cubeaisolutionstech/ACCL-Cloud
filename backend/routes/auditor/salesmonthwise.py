@@ -485,7 +485,7 @@ def download_sales_monthwise_excel():
                     # Write title
                     worksheet.merge_range(
                         start_row, 0, start_row, len(table1_df.columns) - 1,
-                        "SALES IN MT - MONTH WISE (with Session Totals Integration)", title_format
+                        "SALES IN MT - MONTH WISE", title_format
                     )
                     
                     # Write headers
@@ -540,7 +540,7 @@ def download_sales_monthwise_excel():
                     # Write title
                     worksheet.merge_range(
                         start_row, 0, start_row, len(table2_df.columns) - 1,
-                        "SALES IN VALUE - MONTH WISE (with Session Totals Integration)", title_format
+                        "SALES IN VALUE - MONTH WISE", title_format
                     )
                     
                     # Write headers
