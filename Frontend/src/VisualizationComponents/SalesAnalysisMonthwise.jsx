@@ -34,8 +34,8 @@ const SalesAnalysisMonthwise = ({
   const [processing, setProcessing] = useState(false);
   const [hasCheckedSession, setHasCheckedSession] = useState(false);
   
-  // Auto-export state
-  const [autoExportEnabled, setAutoExportEnabled] = useState(true);
+  // Auto-export state (no toggle, always enabled)
+  const autoExportEnabled = true;
 
   // Session storage management
   const saveToSessionStorage = (key, data) => {
@@ -197,16 +197,16 @@ const SalesAnalysisMonthwise = ({
     }
   }, [salesMtData, salesValueData, storeFileInSession, addMessage]);
 
-  // Auto-generate report when data is available
+  // Auto-generate report when data is available (always enabled)
   useEffect(() => {
-    if ((salesMtData || salesValueData) && autoExportEnabled && sessionTotals) {
+    if ((salesMtData || salesValueData) && sessionTotals) {
       const timer = setTimeout(() => {
         autoGenerateSalesReport();
       }, 2000); // 2 second delay after processing completes
       
       return () => clearTimeout(timer);
     }
-  }, [salesMtData, salesValueData, autoExportEnabled, sessionTotals, autoGenerateSalesReport]);
+  }, [salesMtData, salesValueData, sessionTotals, autoGenerateSalesReport]);
 
   // Auto-process when tab is opened and requirements are met
   useEffect(() => {
@@ -423,25 +423,6 @@ const SalesAnalysisMonthwise = ({
   const hasSessionData = sessionTotals && Object.keys(sessionTotals).length > 0;
   const canProcess = hasAuditorFile && hasAuditorSheet && hasSessionData;
 
-  // Auto-export toggle component (TS-PW style)
-  const AutoExportToggle = () => (
-    <div className="auto-export-control">
-      <label className="toggle-label">
-        <input
-          type="checkbox"
-          checked={autoExportEnabled}
-          onChange={(e) => setAutoExportEnabled(e.target.checked)}
-          className="toggle-input"
-        />
-        <span className="toggle-switch"></span>
-        Auto-generate and store combined Excel file
-      </label>
-      <small className="toggle-help">
-        When enabled, the latest combined Sales Analysis Excel file will be automatically generated and stored
-      </small>
-    </div>
-  );
-
   // Data table component (TS-PW style)
   const DataTable = ({ data, title, tableType }) => {
     if (!data || !data.data || data.data.length === 0) {
@@ -573,14 +554,6 @@ const SalesAnalysisMonthwise = ({
             <span className="stat-label">Latest File</span>
           </div>
         </div>
-      </div>
-
-      <div className="preview-intro">
-        <h3> Sales Analysis Tables</h3>
-        <p>Automatically processes month-wise sales data with product analysis totals integration</p>
-        
-        {/* Auto-export control */}
-        <AutoExportToggle />
       </div>
 
       {/* Action Buttons */}
@@ -819,87 +792,6 @@ const SalesAnalysisMonthwise = ({
           color: #666;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-        }
-
-        .preview-intro {
-          text-align: center;
-          margin-bottom: 30px;
-          padding: 24px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border-radius: 8px;
-        }
-
-        .preview-intro h3 {
-          margin: 0 0 10px 0;
-          font-size: 24px;
-          font-weight: 600;
-        }
-
-        .preview-intro p {
-          margin: 0 0 20px 0;
-          font-size: 16px;
-          opacity: 0.9;
-        }
-
-        .auto-export-control {
-          margin: 24px 0;
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .toggle-label {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-          color: white;
-        }
-
-        .toggle-input {
-          display: none;
-        }
-
-        .toggle-switch {
-          position: relative;
-          width: 44px;
-          height: 24px;
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 12px;
-          transition: background 0.3s ease;
-        }
-
-        .toggle-switch::before {
-          content: '';
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          width: 20px;
-          height: 20px;
-          background: white;
-          border-radius: 50%;
-          transition: transform 0.3s ease;
-        }
-
-        .toggle-input:checked + .toggle-switch {
-          background: rgba(255, 255, 255, 0.6);
-        }
-
-        .toggle-input:checked + .toggle-switch::before {
-          transform: translateX(20px);
-        }
-
-        .toggle-help {
-          display: block;
-          margin-top: 8px;
-          color: rgba(255, 255, 255, 0.8);
-          font-size: 12px;
-          font-style: italic;
-          line-height: 1.4;
         }
 
         .tables-section {
@@ -1326,14 +1218,6 @@ const SalesAnalysisMonthwise = ({
           }
 
           .stat-number {
-            font-size: 20px;
-          }
-
-          .preview-intro {
-            padding: 20px;
-          }
-
-          .preview-intro h3 {
             font-size: 20px;
           }
 
