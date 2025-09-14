@@ -326,8 +326,8 @@ const OSProcessor = () => {
 
             <button
               onClick={handleSaveToDb}
-              disabled={loadingSave || !customFilename.trim()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
+              disabled={loadingSave} // Removed !customFilename.trim() condition
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loadingSave && <LoadingSpinner />}
               {loadingSave ? 'Saving...' : 'Save to Database'}
