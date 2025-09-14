@@ -176,16 +176,13 @@ const AdminDashboard = ({ onLogout }) => {
         {activeTab === "Company & Product" && <CompanyProductManager />}
         {activeTab === "Uploads" && (
           <div>
+            {/* UPDATED: Consistent gray styling for processor navigation tabs */}
             <div className="flex space-x-4 mb-4">
               {["Budget", "Sales", "OS"].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setUploadSubTab(tab)}
-                  className={`px-4 py-2 rounded ${
-                    uploadSubTab === tab
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200"
-                  }`}
+                  className="px-4 py-2 rounded bg-gray-300 text-black hover:bg-gray-400 transition-colors"
                 >
                   {tab} Processing
                 </button>
