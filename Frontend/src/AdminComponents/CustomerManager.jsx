@@ -155,7 +155,7 @@ const CustomerManager = ({ onDataUpdated }) => {
           setCustCodeCol(guessColumn(headers, "customer_code"));
           setCustNameCol(guessColumn(headers, "customer_name"));
 
-          setSuccessMessage(`File uploaded successfully! Found ${jsonData.length} rows with auto-mapped columns. Ready to process.`);
+          setSuccessMessage(`File uploaded successfully!`);
         } else {
           setErrorMessage("File appears to be empty. Please check your Excel file.");
         }
