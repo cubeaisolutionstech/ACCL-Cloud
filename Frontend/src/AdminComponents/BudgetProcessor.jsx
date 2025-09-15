@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../api/axios";
 
 const BudgetProcessor = () => {
@@ -6,18 +6,24 @@ const BudgetProcessor = () => {
   const [sheetNames, setSheetNames] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [headerRow, setHeaderRow] = useState(1);
+  const [columns, setColumns] = useState([]);
   const [downloadLink, setDownloadLink] = useState(null);
   const [processedExcelBase64, setProcessedExcelBase64] = useState(null);
-  const [columns, setColumns] = useState([]);
-  const [preview, setPreview] = useState([]);
   const [customFilename, setCustomFilename] = useState("");
-  
+  const [preview, setPreview] = useState([]);
+  const [metrics, setMetrics] = useState(null);
+
   // Enhanced loading states
-  const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("");
+  const [loadingSheets, setLoadingSheets] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingProcess, setLoadingProcess] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
+
+  // Success/Error states
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  
+
+  // Column mappings
   const [colMap, setColMap] = useState({
     customer_col: "",
     exec_code_col: "",
@@ -27,100 +33,135 @@ const BudgetProcessor = () => {
     cust_name_col: "",
   });
 
-  const [metrics, setMetrics] = useState(null);
+  // Auto-hide messages after 5 seconds
+  useEffect(() => {
+    if (successMessage || errorMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage("");
+        setErrorMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage, errorMessage]);
 
-  // Clear messages helper
-  const clearMessages = () => {
-    setSuccessMessage("");
-    setErrorMessage("");
+  const autoDetectColumn = (columns, target, fallback = "") => {
+    const lowerTarget = target.toLowerCase();
+    return (
+      columns.find((col) => col.toLowerCase().includes(lowerTarget)) ||
+      fallback
+    );
   };
 
   const handleFileUpload = async (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
 
-    clearMessages();
-    setLoading(true);
-    setLoadingMessage("Uploading file and reading sheet names...");
+    setFile(selectedFile);
+    setLoadingSheets(true);
+    setErrorMessage("");
 
     try {
-      setFile(f);
-      const data = new FormData();
-      data.append("file", f);
-
-      const res = await api.post("/upload-tools/sheet-names", data);
-      setSheetNames(res.data.sheet_names);
-
-      const consolidateSheet = res.data.sheet_names.find(s => s.toLowerCase().trim() === "consolidate");
-      setSelectedSheet(consolidateSheet || res.data.sheet_names[0]);
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const res = await api.post("/upload-tools/sheet-names", formData);
+      const names = res.data.sheet_names;
+      setSheetNames(names);
       
-      setSuccessMessage(`✅ File "${f.name}" uploaded successfully! Found ${res.data.sheet_names.length} sheet(s).`);
+      // Auto-select "consolidate" sheet or first sheet
+      const consolidateSheet = names.find(s => s.toLowerCase().trim() === "consolidate");
+      setSelectedSheet(consolidateSheet || names[0]);
+      
+      setSuccessMessage(`Successfully loaded ${names.length} sheet(s) from file`);
+      
+      // Reset dependent states
+      setColumns([]);
+      setDownloadLink(null);
+      setProcessedExcelBase64(null);
+      setPreview([]);
+      setMetrics(null);
+      
+      // Reset column mappings
+      setColMap({
+        customer_col: "",
+        exec_code_col: "",
+        exec_name_col: "",
+        branch_col: "",
+        region_col: "",
+        cust_name_col: "",
+      });
     } catch (err) {
-      console.error("Upload error", err);
-      setErrorMessage("❌ Failed to upload file. Please try again.");
+      console.error("Error loading sheets:", err);
+      setErrorMessage("Failed to load sheets from file. Please check the file format.");
     } finally {
-      setLoading(false);
-      setLoadingMessage("");
+      setLoadingSheets(false);
     }
   };
 
   const handlePreview = async () => {
-    clearMessages();
-    setLoading(true);
-    setLoadingMessage("Loading sheet preview...");
-    
-    try {
-      const data = new FormData();
-      data.append("file", file);
-      data.append("sheet_name", selectedSheet);
-      data.append("header_row", headerRow);
+    if (!file || !selectedSheet) {
+      setErrorMessage("Please select a file and sheet first.");
+      return;
+    }
 
-      const res = await api.post("/upload-tools/preview", data);
+    setLoadingPreview(true);
+    setErrorMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("sheet_name", selectedSheet);
+      formData.append("header_row", headerRow);
+
+      const res = await api.post("/upload-tools/preview", formData);
       setColumns(res.data.columns);
       setPreview(res.data.preview);
 
-      // Auto map
-      const auto = (key) => res.data.columns.find(c => c.toLowerCase().includes(key)) || "";
+      // Auto-detect columns
       setColMap({
-        customer_col: auto("sl code"),
-        exec_code_col: auto("executive code") || auto("code"),
-        exec_name_col: auto("executive name"),
-        branch_col: auto("branch"),
-        region_col: auto("region"),
-        cust_name_col: auto("party name")
+        customer_col: autoDetectColumn(res.data.columns, "sl code"),
+        exec_code_col: autoDetectColumn(res.data.columns, "executive code") || autoDetectColumn(res.data.columns, "code"),
+        exec_name_col: autoDetectColumn(res.data.columns, "executive name"),
+        branch_col: autoDetectColumn(res.data.columns, "branch"),
+        region_col: autoDetectColumn(res.data.columns, "region"),
+        cust_name_col: autoDetectColumn(res.data.columns, "party name")
       });
 
-      setSuccessMessage(`✅ Sheet "${selectedSheet}" loaded successfully! Found ${res.data.columns.length} columns.`);
+      setSuccessMessage(`Successfully previewed ${res.data.columns.length} columns. Auto-mapped available fields.`);
     } catch (err) {
-      console.error("Preview error", err);
-      setErrorMessage("❌ Failed to load preview. Please check your file and try again.");
+      console.error("Preview error:", err);
+      setErrorMessage("Failed to load preview. Please check your file and sheet selection.");
     } finally {
-      setLoading(false);
-      setLoadingMessage("");
+      setLoadingPreview(false);
     }
   };
 
   const handleProcess = async () => {
-    clearMessages();
-    setLoading(true);
-    setLoadingMessage("Processing budget file... This may take a moment.");
-    
+    if (!colMap.customer_col && !colMap.exec_code_col) {
+      setErrorMessage("Please map at least Customer Code or Executive Code column before processing.");
+      return;
+    }
+
+    setLoadingProcess(true);
+    setErrorMessage("");
+
     try {
-      const data = new FormData();
-      data.append("file", file);
-      data.append("sheet_name", selectedSheet);
-      data.append("header_row", headerRow);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("sheet_name", selectedSheet);
+      formData.append("header_row", headerRow);
 
       Object.entries(colMap).forEach(([key, val]) => {
-        if (val) data.append(key, val);
+        if (val) formData.append(key, val);
       });
 
-      const res = await api.post("/upload-budget-file", data);
+      const res = await api.post("/upload-budget-file", formData);
       setPreview(res.data.preview);
       setMetrics(res.data.counts);
 
       const byteCharacters = atob(res.data.file_data);
-      const byteNumbers = new Array(byteCharacters.length).fill().map((_, i) => byteCharacters.charCodeAt(i));
+      const byteNumbers = new Array(byteCharacters.length)
+        .fill()
+        .map((_, i) => byteCharacters.charCodeAt(i));
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -129,224 +170,339 @@ const BudgetProcessor = () => {
       setDownloadLink(url);
       setProcessedExcelBase64(res.data.file_data);
 
-      setSuccessMessage("🎉 Budget file processed successfully! Your file is ready for download.");
+      setSuccessMessage("Budget file processed successfully! You can now download or save the processed file.");
     } catch (err) {
-      console.error("Process error", err);
-      setErrorMessage("❌ Failed to process file. Please check your column mappings and try again.");
+      console.error("Process error:", err);
+      setErrorMessage("Failed to process file. Please check your data and try again.");
     } finally {
-      setLoading(false);
-      setLoadingMessage("");
+      setLoadingProcess(false);
     }
   };
 
   const handleSave = async () => {
     if (!processedExcelBase64) {
-      setErrorMessage("❌ No processed file to save");
+      setErrorMessage("No processed file to save. Please process a file first.");
       return;
     }
 
-    clearMessages();
-    setLoading(true);
-    setLoadingMessage("Saving file to database...");
-    
+    setLoadingSave(true);
+    setErrorMessage("");
+
     try {
       const res = await api.post("/save-budget-file", {
         file_data: processedExcelBase64,
-        filename: customFilename?.trim() || "Processed_Budget.xlsx"
+        filename: customFilename?.trim() || "Processed_Budget.xlsx",
       });
-      setSuccessMessage(`✅ File saved to database successfully! File ID: ${res.data.id}`);
+      
+      setSuccessMessage(`File saved to database successfully! File ID: ${res.data.id}`);
+      setCustomFilename(""); // Clear filename after successful save
     } catch (err) {
-      console.error("Save error", err);
-      setErrorMessage("❌ Failed to save file to database. Please try again.");
+      console.error("Save error:", err);
+      setErrorMessage("Failed to save file to database. Please try again.");
     } finally {
-      setLoading(false);
-      setLoadingMessage("");
+      setLoadingSave(false);
     }
   };
 
-  return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Budget Processing Tool</h2>
-
-      {/* File Upload Section */}
-      <div className="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Excel File (.xlsx, .xls)
-        </label>
-        <input 
-          type="file" 
-          accept=".xlsx,.xls" 
-          onChange={handleFileUpload} 
-          className="mb-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
-          disabled={loading}
-        />
+  // Success/Error Message Component
+  const MessageDisplay = () => {
+    if (!successMessage && !errorMessage) return null;
+    
+    return (
+      <div className={`p-4 rounded-md mb-4 ${
+        successMessage 
+          ? 'bg-green-50 border border-green-200 text-green-800' 
+          : 'bg-red-50 border border-red-200 text-red-800'
+      }`}>
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            {successMessage ? (
+              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
+          <div className="ml-3">
+            <p className="text-sm font-medium">
+              {successMessage || errorMessage}
+            </p>
+          </div>
+          <div className="ml-auto">
+            <button
+              className="inline-flex text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                setSuccessMessage("");
+                setErrorMessage("");
+              }}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
+    );
+  };
 
-      {/* Loading Indicator */}
-      {loading && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center gap-3">
-            <svg className="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-            </svg>
-            <span className="text-blue-800 font-medium">{loadingMessage}</span>
-          </div>
-        </div>
-      )}
+  // Loading Spinner Component
+  const LoadingSpinner = () => (
+    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+  );
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800">{successMessage}</p>
-        </div>
-      )}
+  return (
+    <div className="bg-white p-6 rounded shadow">
+      <h2 className="text-xl font-semibold mb-4">Budget File Processing</h2>
 
-      {/* Error Message */}
-      {errorMessage && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800">{errorMessage}</p>
-        </div>
-      )}
+      <MessageDisplay />
 
-      {/* Sheet Configuration */}
-      {sheetNames.length > 0 && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3 text-gray-800">Sheet Configuration</h3>
-          
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Sheet</label>
-              <select
-                value={selectedSheet}
-                onChange={(e) => setSelectedSheet(e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2"
-                disabled={loading}
-              >
-                {sheetNames.map((sheet, i) => (
-                  <option key={i} value={sheet}>{sheet}</option>
-                ))}
-              </select>
+      <div className="space-y-4">
+        {/* File Upload Section */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Excel File
+          </label>
+          <input
+            type="file"
+            accept=".xls,.xlsx"
+            onChange={handleFileUpload}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+          {loadingSheets && (
+            <div className="mt-2 flex items-center text-blue-600">
+              <LoadingSpinner />
+              <span className="text-sm">Loading sheets...</span>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Header Row</label>
-              <input
-                type="number"
-                value={headerRow}
-                onChange={(e) => setHeaderRow(parseInt(e.target.value))}
-                className="w-full border border-gray-300 rounded-md p-2"
-                disabled={loading}
-                min="1"
-              />
-            </div>
-          </div>
-
-          <button 
-            onClick={handlePreview} 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
-            disabled={loading}
-          >
-            Load Sheet Preview
-          </button>
+          )}
         </div>
-      )}
 
-      {/* Column Mapping */}
-      {columns.length > 0 && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3 text-gray-800">Column Mapping</h3>
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            {[
-              ["Customer Code Column", "customer_col"],
-              ["Executive Code Column", "exec_code_col"],
-              ["Executive Name Column", "exec_name_col"],
-              ["Branch Column", "branch_col"],
-              ["Region Column", "region_col"],
-              ["Customer Name Column", "cust_name_col"],
-            ].map(([label, key]) => (
-              <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+        {/* Sheet Configuration */}
+        {sheetNames.length > 0 && (
+          <div className="bg-gray-50 p-4 rounded-md space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sheet Name
+                </label>
                 <select
-                  value={colMap[key]}
-                  onChange={(e) => setColMap((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md p-2"
-                  disabled={loading}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedSheet}
+                  onChange={(e) => setSelectedSheet(e.target.value)}
                 >
-                  <option value="">-- Select Column --</option>
-                  {columns.map((col, i) => (
-                    <option key={i} value={col}>{col}</option>
+                  {sheetNames.map((sheet) => (
+                    <option key={sheet} value={sheet}>{sheet}</option>
                   ))}
                 </select>
               </div>
-            ))}
-          </div>
-
-          <button 
-            onClick={handleProcess} 
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
-            disabled={loading}
-          >
-            Process Budget File
-          </button>
-        </div>
-      )}
-
-      {/* Processing Results */}
-      {metrics && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3 text-gray-800">Processing Results</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(metrics).map(([key, val]) => (
-              <div key={key} className="p-3 bg-white rounded-md shadow-sm border">
-                <p className="text-sm text-gray-600 capitalize">{key.replace(/_/g, " ")}</p>
-                <p className="text-xl font-bold text-gray-900">{val}</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Header Row
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={headerRow}
+                  onChange={(e) => setHeaderRow(parseInt(e.target.value))}
+                />
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            </div>
 
-      {/* Download and Save Section */}
-      {processedExcelBase64 && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3 text-gray-800">Download & Save</h3>
-          
-          {downloadLink && (
-            <div className="mb-4">
+            <button
+              onClick={handlePreview}
+              disabled={loadingPreview || !selectedSheet}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingPreview && <LoadingSpinner />}
+              {loadingPreview ? 'Loading Sheet...' : 'Load Sheet'}
+            </button>
+          </div>
+        )}
+
+        {/* Column Mapping */}
+        {columns.length > 0 && (
+          <div className="bg-gray-50 p-4 rounded-md space-y-4">
+            <h4 className="font-medium text-gray-900">Column Mapping</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Customer Code Column
+                  </label>
+                  <select
+                    value={colMap.customer_col}
+                    onChange={(e) => setColMap(prev => ({ ...prev, customer_col: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- Select Column --</option>
+                    {columns.map((col) => (
+                      <option key={col} value={col}>{col}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Executive Code Column
+                  </label>
+                  <select
+                    value={colMap.exec_code_col}
+                    onChange={(e) => setColMap(prev => ({ ...prev, exec_code_col: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- None --</option>
+                    {columns.map((col) => (
+                      <option key={col} value={col}>{col}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Executive Name Column
+                  </label>
+                  <select
+                    value={colMap.exec_name_col}
+                    onChange={(e) => setColMap(prev => ({ ...prev, exec_name_col: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- None --</option>
+                    {columns.map((col) => (
+                      <option key={col} value={col}>{col}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Branch Column
+                  </label>
+                  <select
+                    value={colMap.branch_col}
+                    onChange={(e) => setColMap(prev => ({ ...prev, branch_col: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- None --</option>
+                    {columns.map((col) => (
+                      <option key={col} value={col}>{col}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Region Column
+                  </label>
+                  <select
+                    value={colMap.region_col}
+                    onChange={(e) => setColMap(prev => ({ ...prev, region_col: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- None --</option>
+                    {columns.map((col) => (
+                      <option key={col} value={col}>{col}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Customer Name Column
+                  </label>
+                  <select
+                    value={colMap.cust_name_col}
+                    onChange={(e) => setColMap(prev => ({ ...prev, cust_name_col: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- None --</option>
+                    {columns.map((col) => (
+                      <option key={col} value={col}>{col}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleProcess}
+              disabled={loadingProcess || (!colMap.customer_col && !colMap.exec_code_col)}
+              className="inline-flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingProcess && <LoadingSpinner />}
+              {loadingProcess ? 'Processing File...' : 'Process Budget File'}
+            </button>
+
+            {loadingProcess && (
+              <div className="text-sm text-gray-600">
+                Please wait while we process your budget file. This may take a few moments...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Processing Results */}
+        {metrics && (
+          <div className="bg-gray-50 p-4 rounded-md space-y-4">
+            <h4 className="font-medium text-gray-900">Processing Results</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(metrics).map(([key, val]) => (
+                <div key={key} className="p-3 bg-white rounded-md shadow-sm border">
+                  <p className="text-sm text-gray-600 capitalize">{key.replace(/_/g, " ")}</p>
+                  <p className="text-xl font-bold text-gray-900">{val}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Download and Save Section */}
+        {downloadLink && (
+          <div className="bg-gray-50 p-4 rounded-md space-y-4">
+            <div className="flex flex-wrap gap-4">
               <a
                 href={downloadLink}
                 download="processed_budget.xlsx"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md inline-block font-medium transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
-                📥 Download Processed File
+                Download Processed Budget File
               </a>
             </div>
-          )}
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Filename for Database Storage
-            </label>
-            <input
-              type="text"
-              value={customFilename}
-              onChange={(e) => setCustomFilename(e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2"
-              placeholder="e.g., Apr-2025_Processed_Budget"
-              disabled={loading}
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter Filename to Save to Database
+              </label>
+              <input
+                type="text"
+                value={customFilename}
+                onChange={(e) => setCustomFilename(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Apr-2025_Processed_Budget"
+              />
+            </div>
+
+            {processedExcelBase64 && (
+              <button
+                onClick={handleSave}
+                disabled={loadingSave}
+                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingSave && <LoadingSpinner />}
+                {loadingSave ? 'Saving...' : 'Save Budget File to DB'}
+              </button>
+            )}
           </div>
-
-          <button
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
-            onClick={handleSave}
-            disabled={loading}
-          >
-            💾 Save to Database
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
