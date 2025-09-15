@@ -152,6 +152,8 @@ def format_column_header(header_text):
     # OD Target vs Collection specific renaming
     elif '% ACHIEVED (SELECTED MONTH)' in header_text:
         header_text = 'FOR THE MONTH % ACHIEVED'
+    elif 'FOR THE MONTH OVERDUE' in header_text:
+        header_text = 'FOR THE MONTH OVERDUE/L'
     # General BUDGET to TARGET replacement
     elif 'BUDGET QTY' in header_text:
         header_text = header_text.replace('BUDGET QTY', 'TARGET QTY')
