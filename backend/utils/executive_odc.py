@@ -285,7 +285,7 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
             os_feb = os_feb[os_feb[os_feb_area_col].isin([b.upper() for b in selected_branches])]
             total_sale = total_sale[total_sale[sale_area_col].isin([b.upper() for b in selected_branches])]
 
-        # Date conversion + exec normalization (matching original backend naming)
+        # Date conversion + exec normalization
         os_jan[os_jan_due_date_col] = pd.to_datetime(os_jan[os_jan_due_date_col], errors='coerce')
         os_jan[os_jan_ref_date_col] = pd.to_datetime(os_jan.get(os_jan_ref_date_col), errors='coerce')
         os_jan["SL Code"] = os_jan[os_jan_sl_code_col].astype(str)
@@ -301,19 +301,23 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
         total_sale["SL Code"] = total_sale[sale_sl_code_col].astype(str)
         total_sale["Executive"] = total_sale[sale_exec_col].astype(str).str.strip().str.upper()
 
-        # FIXED: Get all executives from all sources, not just selected branches
-        if selected_executives:
-            selected_execs_upper = [str(e).strip().upper() for e in selected_executives]
-            executives_to_display = selected_execs_upper
-        else:
-            # Get all executives from all datasets
-            all_executives = set()
-            all_executives.update(os_jan["Executive"].dropna().unique())
-            all_executives.update(os_feb["Executive"].dropna().unique()) 
-            all_executives.update(total_sale["Executive"].dropna().unique())
-            executives_to_display = sorted(list(all_executives))
+        # ✅ FIXED EXECUTIVE FILTERING (borrowed logic from NBC)
+        if selected_branches:
+            branch_execs = set(os_jan.loc[os_jan[os_jan_area_col].isin([b.upper() for b in selected_branches]), "Executive"].dropna())
+            branch_execs.update(os_feb.loc[os_feb[os_feb_area_col].isin([b.upper() for b in selected_branches]), "Executive"].dropna())
+            branch_execs.update(total_sale.loc[total_sale[sale_area_col].isin([b.upper() for b in selected_branches]), "Executive"].dropna())
+            branch_execs = {str(e).strip().upper() for e in branch_execs}
 
-        # Filter data by selected executives - but don't require all datasets to have data
+            if selected_executives:
+                selected_execs_upper = {str(e).strip().upper() for e in selected_executives}
+                executives_to_display = sorted(branch_execs.intersection(selected_execs_upper))
+            else:
+                executives_to_display = sorted(branch_execs)
+        else:
+            executives_to_display = [str(e).strip().upper() for e in selected_executives] if selected_executives else \
+                                    sorted(set(os_jan["Executive"].dropna()) | set(os_feb["Executive"].dropna()) | set(total_sale["Executive"].dropna()))
+
+        # Filter data by selected executives
         os_jan_filtered = os_jan[os_jan["Executive"].isin(executives_to_display)]
         os_feb_filtered = os_feb[os_feb["Executive"].isin(executives_to_display)]
         total_sale_filtered = total_sale[total_sale["Executive"].isin(executives_to_display)]
@@ -429,7 +433,6 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
         total_row = {'Executive': 'TOTAL'}
         for col in final.columns[1:]:
             if col in ["Overall % Achieved", "% Achieved (Selected Month)"]:
-                # Handle weighted average for percentages
                 if col == "Overall % Achieved":
                     weights = final["Due Target"]
                 else:
@@ -443,13 +446,11 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
                 total_row[col] = round(final[col].sum(), 2)
         final = pd.concat([final, pd.DataFrame([total_row])], ignore_index=True)
 
-        # Prepare return data (matching original backend format)
         result = {
             "success": True, 
             "od_results": final.to_dict("records")
         }
         
-        # Add warning message if there are executives with partial data
         if warning_message:
             result["warning"] = warning_message
             
@@ -459,8 +460,6 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
         import traceback
         traceback.print_exc()
         return {"success": False, "error": str(e)}
-
-
 def load_data(file_path):
     """Load data from CSV or Excel file"""
     try:
