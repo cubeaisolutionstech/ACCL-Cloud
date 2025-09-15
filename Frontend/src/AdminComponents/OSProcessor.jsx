@@ -208,7 +208,7 @@ const OSProcessor = () => {
 
   return (
     <div className="bg-white shadow p-6 rounded">
-      <h2 className="text-xl font-bold mb-4">Process OS File</h2>
+      <h2 className="text-xl font-bold mb-4">OS File Processing</h2>
 
       <MessageDisplay />
 
