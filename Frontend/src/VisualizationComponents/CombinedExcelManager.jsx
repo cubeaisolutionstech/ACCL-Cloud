@@ -25,7 +25,7 @@ const CombinedExcelManager = ({
   // State Management
   const [processing, setProcessing] = useState(false);
 
-  const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
   // Region Sheet Column Definitions
   const regionMtColumns = [
@@ -276,7 +276,7 @@ const CombinedExcelManager = ({
     <div className="simplified-excel-manager">
       {/* Header Section */}
       <div className="manager-header">
-        <h3>🔗 Auditor Format Generator</h3>
+        <h3> Auditor Format Generator</h3>
         <p>Combine all analysis files into one professional Auditor Format Excel file</p>
       </div>
 
@@ -285,7 +285,7 @@ const CombinedExcelManager = ({
       {/* Category Overview */}
       {categorySummary.length > 0 && (
         <div className="category-overview">
-          <h4>📂 Available Categories</h4>
+          <h4> Available Categories</h4>
           <div className="category-grid">
             {categorySummary.map(category => (
               <div key={category.name} className="category-card" style={{borderLeftColor: category.color}}>
@@ -312,11 +312,7 @@ const CombinedExcelManager = ({
           {processing ? <RefreshCw size={20} className="spinning" /> : <Merge size={20} />}
           {processing ? 'Creating Auditor Format...' : 'Generate Auditor Format Excel'}
         </button>
-        <p className="action-description">
-          🎨 Combines all analysis files into one professionally formatted Excel file with:
-          <br />
-          ✅ Centered titles • ✅ Professional formatting • ✅ Organized sheets • ✅ 2-decimal precision
-        </p>
+        
       </div>
 
       {/* Empty State */}
