@@ -31,6 +31,7 @@ body {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
+  width: 100%;
 }
 
 .app-header::before {
@@ -126,25 +127,51 @@ body {
 /* App Layout */
 .app-layout {
   display: flex;
+  flex-direction: row; /* Horizontal layout */
   flex: 1;
   min-height: 0;
   width: 100%;
   position: relative;
 }
 
-/* Sidebar */
+/* ACCL Auditor Title Section */
+.accl-auditor-title {
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  z-index: 999;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.05em;
+}
+
+.accl-auditor-title::before {
+  content: '📊';
+  margin-right: 1rem;
+  font-size: 1.8rem;
+}
+
+/* Sidebar - Positioned on the left */
 .sidebar {
-  width: 300px;
-  min-width: 300px;
+  width: 300px; /* Fixed width for sidebar */
   background: white;
   border-right: 1px solid #e2e8f0;
   padding: 1.5rem;
   overflow-y: auto;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
   flex-shrink: 0;
-  height: calc(100vh - 200px);
+  height: calc(100vh - 80px); /* Adjust height to account for title */
+  position: relative;
+  z-index: 1000;
 }
 
 .sidebar-section {
@@ -216,6 +243,50 @@ body {
   flex: 1;
 }
 
+/* DELETE BUTTON - Updated to use multiply symbol instead of dustbin */
+.delete-btn {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.delete-btn:hover {
+  background: #fecaca;
+  border-color: #f87171;
+  color: #b91c1c;
+  transform: scale(1.1);
+}
+
+.delete-btn:active {
+  transform: scale(0.95);
+}
+
+/* Style for multiply symbol */
+.delete-btn::before {
+  content: '×';
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Hide any icons inside delete button when using multiply symbol */
+.delete-btn svg {
+  display: none;
+}
+
 .sheet-select {
   width: 100%;
   padding: 0.75rem;
@@ -244,15 +315,18 @@ body {
   z-index: 999;
 }
 
-/* Main Content Area */
+/* Main Content Area - Positioned on the right */
 .main-content {
-  flex: 1;
+  flex: 1; /* Take up remaining space */
   display: flex;
   flex-direction: column;
   min-height: 0;
   background: #f8fafc;
-  width: calc(100% - 300px);
+  margin-top: 0;
+  width: 100%;
+  height: calc(100vh - 80px); /* Adjust height to account for title */
   overflow: hidden;
+  padding: 1.5rem;
 }
 
 /* Tab Navigation */
@@ -722,66 +796,41 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.3); /* dim background */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  backdrop-filter: blur(4px);
 }
+
 
 .loading-spinner {
-  background: white;
-  padding: 2.5rem;
-  border-radius: 16px;
-  text-align: center;
-  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
-  border: 1px solid #e2e8f0;
-  max-width: 300px;
-  margin: 0 auto;
-}
-
-.spinner {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
   width: 50px;
   height: 50px;
-  margin: 0 auto 1.5rem;
-}
-
-.spinner-dot {
-  width: 12px;
-  height: 12px;
-  background: #4f46e5;
+  border: 4px solid rgba(79, 70, 229, 0.2); /* light border */
+  border-top-color: #4f46e5; /* main color */
   border-radius: 50%;
-  animation: bounce 0.6s infinite alternate;
+  animation: spin 1s linear infinite;
 }
 
-.spinner-dot:nth-child(2) {
-  animation-delay: 0.2s;
+/* Content area loader */
+.content-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 
-.spinner-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes bounce {
-  from {
-    transform: translateY(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateY(-18px);
-    opacity: 0.7;
-  }
-}
-
+/* Remove old unused dot bounce + text inside spinner */
+.spinner,
+.spinner-dot,
 .loading-spinner p {
-  color: #64748b;
-  font-weight: 500;
-  font-size: 1rem;
+  display: none !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Message Log */
@@ -856,7 +905,7 @@ body {
 .empty-log {
   text-align: center;
   padding: 2rem 1rem;
-  color: #9ca3af;
+  color: #9ca3b8;
 }
 
 .empty-log svg {
@@ -980,39 +1029,45 @@ body {
 /* Responsive Design */
 @media (min-width: 769px) {
   .sidebar {
-    position: static !important;
+    position: relative !important;
     transform: none !important;
     width: 300px !important;
-    min-width: 300px !important;
+    height: calc(100vh - 80px) !important;
   }
-  
+
+  .accl-auditor-title {
+    left: 0 !important;
+    width: 100% !important;
+  }
+
+  .app-header {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+  }
+
+  .app-layout {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+  }
+
   .mobile-menu-btn {
     display: none !important;
   }
-  
+
   .sidebar-overlay {
     display: none !important;
   }
-  
+
   .main-content {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
     width: calc(100% - 300px) !important;
+    height: calc(100vh - 80px) !important;
   }
-  
+
   .column-stats .md\:grid-cols-4 {
     grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-@media (max-width: 1024px) {
-  .stats-overview {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: center;
-  }
-  
-  .stat-card {
-    width: 100%;
-    max-width: 250px;
   }
 }
 
@@ -1029,42 +1084,40 @@ body {
     position: relative;
   }
 
+  .accl-auditor-title {
+    height: 60px !important;
+    font-size: 1.5rem !important;
+  }
+
+  .accl-auditor-title::before {
+    font-size: 1.2rem !important;
+    margin-right: 0.5rem !important;
+  }
+
   .app-header {
     padding: 1.5rem 1rem;
+    margin-top: 60px !important;
+    width: 100% !important;
   }
-  
+
   .header-main h1 {
     font-size: 2rem;
   }
 
   .app-layout {
-    position: relative;
+    flex-direction: column !important; /* Stack vertically on mobile */
   }
 
   .sidebar {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    height: 100vh !important;
-    z-index: 1000;
-    transform: translateX(-100%);
-    width: 300px !important;
-    min-width: 300px !important;
-    background: white;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
-  }
-
-  .sidebar-open {
-    transform: translateX(0) !important;
-  }
-
-  .sidebar-overlay {
-    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0.75rem;
   }
 
   .main-content {
     width: 100% !important;
+    height: auto !important;
+    padding: 1rem;
   }
 
   .auditor-section,
@@ -1090,12 +1143,12 @@ body {
     align-items: stretch;
     gap: 1rem;
   }
-  
+
   .table-info {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .search-input-wrapper {
     max-width: 100%;
   }
@@ -1103,7 +1156,7 @@ body {
   .table-container {
     font-size: 0.75rem;
   }
-  
+
   .data-table th:first-child,
   .data-table td:first-child {
     position: sticky;
@@ -1112,7 +1165,7 @@ body {
     z-index: 1;
     min-width: 100px;
   }
-  
+
   .data-table th:first-child {
     background: #f8fafc;
   }
@@ -1127,19 +1180,36 @@ body {
     padding: 0.75rem 0.5rem;
     font-size: 0.75rem;
   }
-  
+
   .data-table {
     font-size: 0.75rem;
   }
-  
+
   .data-table th,
   .data-table td {
     padding: 0.5rem 0.25rem;
   }
 
   .sidebar {
-    width: 280px;
     padding: 0.75rem;
+  }
+
+  .accl-auditor-title {
+    height: 50px !important;
+    font-size: 1.2rem !important;
+  }
+
+  .accl-auditor-title::before {
+    font-size: 1.2rem !important;
+    margin-right: 0.5rem !important;
+  }
+
+  .app-header {
+    margin-top: 50px !important;
+  }
+
+  .app-layout {
+    margin-top: 50px !important;
   }
 
   .header-main h1 {
@@ -1185,8 +1255,6 @@ body {
     z-index: 1001;
   }
 }
-
-/* ADD THESE STYLES to your App.css file for the integration features */
 
 /* Integration Status in Stats Overview */
 .stat-card-success {
@@ -1250,14 +1318,11 @@ body {
   opacity: 0.8;
 }
 
+
+
 /* Fix for any style attribute warnings */
 .spinner-icon {
   animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 /* Integration Section Styling (if needed) */
