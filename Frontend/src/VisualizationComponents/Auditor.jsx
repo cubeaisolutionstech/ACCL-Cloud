@@ -770,7 +770,7 @@ function Auditor() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>📊 ACCL AUDITOR FORMAT </h1>
+        <h1>📊 ACCL AUDITOR FORMAT FILE </h1>
       </header>
 
       <div className="app-layout">
@@ -939,29 +939,29 @@ function Auditor() {
             </div>
           )}
 
-          {/* ENHANCED: Show stored files count in sidebar */}
+          {/* CLEANED UP: Show stored files count in sidebar with single symbols */}
           {storedFiles.length > 0 && (
             <div className="sidebar-section">
               <h3 className="sidebar-title">📁 Stored Files ({storedFiles.length})</h3>
               <div className="stored-files-summary">
                 {storedFiles.filter(f => f.type === 'sales-analysis-excel').length > 0 && (
                   <div className="file-type-count">
-                    📊 Sales Analysis: {storedFiles.filter(f => f.type === 'sales-analysis-excel').length}
+                    📊 Sales Analysis
                   </div>
                 )}
                 {storedFiles.filter(f => f.type && f.type.includes('region')).length > 0 && (
                   <div className="file-type-count">
-                    🌍 Region Analysis: {storedFiles.filter(f => f.type && f.type.includes('region')).length}
+                    🗺️ Region Analysis
                   </div>
                 )}
                 {storedFiles.filter(f => f.type && f.type.includes('product')).length > 0 && (
                   <div className="file-type-count">
-                    📦 Product Analysis: {storedFiles.filter(f => f.type && f.type.includes('product')).length}
+                    📦 Product Analysis
                   </div>
                 )}
                 {storedFiles.filter(f => f.type && (f.type.includes('tspw') || f.type.includes('eropw'))).length > 0 && (
                   <div className="file-type-count">
-                    🔧 Other Analysis: {storedFiles.filter(f => f.type && (f.type.includes('tspw') || f.type.includes('eropw'))).length}
+                    🔧 Other Analysis
                   </div>
                 )}
               </div>
@@ -1002,7 +1002,7 @@ function Auditor() {
             >
               Region Month-wise Analysis
               {(regionData.mt || regionData.value) && (
-                <span className="integration-indicator">🌍</span>
+                <span className="integration-indicator"></span>
               )}
               {storedFiles.filter(f => f.type && f.type.includes('region')).length > 0 && (
                 <span className="integration-indicator">📁</span>
@@ -1014,13 +1014,13 @@ function Auditor() {
             >
               Product-wise Analysis
               {(productMtData || productValueData) && (
-                <span className="integration-indicator">📦</span>
+                <span className="integration-indicator"></span>
               )}
               {sessionTotals && (
-                <span className="integration-indicator">🔗</span>
+                <span className="integration-indicator"></span>
               )}
               {storedFiles.filter(f => f.type && f.type.includes('product')).length > 0 && (
-                <span className="integration-indicator">📁{storedFiles.filter(f => f.type && f.type.includes('product')).length}</span>
+                <span className="integration-indicator">📁</span>
               )}
             </button>
             <button
@@ -1029,7 +1029,7 @@ function Auditor() {
             >
               TS-PW Analysis
               {storedFiles.filter(f => f.type && f.type.includes('tspw')).length > 0 && (
-                <span className="integration-indicator">📁{storedFiles.filter(f => f.type && f.type.includes('tspw')).length}</span>
+                <span className="integration-indicator">📁</span>
               )}
             </button>
             <button
@@ -1038,7 +1038,7 @@ function Auditor() {
             >
               ERO-PW Analysis
               {storedFiles.filter(f => f.type && f.type.includes('eropw')).length > 0 && (
-                <span className="integration-indicator">📁{storedFiles.filter(f => f.type && f.type.includes('eropw')).length}</span>
+                <span className="integration-indicator">📁</span>
               )}
             </button>
             <button
@@ -1046,15 +1046,15 @@ function Auditor() {
               onClick={() => handleTabChange('sales-analysis')}
             >
               Sales Analysis Month-wise
-              {/* ENHANCED: Better indicators for Sales Analysis tab */}
+              {/* CLEANED UP: Better indicators for Sales Analysis tab */}
               {sessionTotals && (
-                <span className="integration-indicator session-ready">🔗</span>
+                <span className="integration-indicator">📁</span>
               )}
               {!sessionTotals && (productMtData || productValueData) && (
-                <span className="integration-indicator session-pending">⚠️</span>
+                <span className="integration-indicator"></span>
               )}
               {storedFiles.filter(f => f.type === 'sales-analysis-excel').length > 0 && (
-                <span className="integration-indicator">📁{storedFiles.filter(f => f.type === 'sales-analysis-excel').length}</span>
+                <span className="integration-indicator"></span>
               )}
             </button>
             <button
@@ -1063,10 +1063,10 @@ function Auditor() {
             >
               Combined Data Export
               {(regionData.mt || regionData.value) && (
-                <span className="integration-indicator">📊</span>
+                <span className="integration-indicator">📁</span>
               )}
               {storedFiles.length > 0 && (
-                <span className="integration-indicator">📁{storedFiles.length}</span>
+                <span className="integration-indicator"></span>
               )}
             </button>  
    
