@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useExcelData } from '../context/ExcelDataContext';
+import SearchableSelect from './SearchableSelect'; // Import SearchableSelect
 import { addReportToStorage } from '../utils/consolidatedStorage';
 
 const OdTargetVsCollection = () => {
@@ -322,7 +323,7 @@ const OdTargetVsCollection = () => {
     <div className="p-4">
       <h2 className="text-xl font-bold text-blue-800 mb-4">OD Target vs Collection</h2>
       
-      {/* Sheet selection */}
+      {/* Sheet selection - Keep as regular select */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {['osPrev', 'osCurr', 'sales'].map((type) => (
           <div key={type}>
@@ -350,88 +351,80 @@ const OdTargetVsCollection = () => {
           <div className="mt-6">
             <h3 className="text-blue-700 font-semibold mb-2">Column Mapping loaded successfully!</h3>
 
-            {/* OS Previous Month Mapping */}
+            {/* OS Previous Month Mapping - Updated with SearchableSelect */}
             <div className="mb-6">
               <h4 className="text-blue-600 font-semibold mb-2">OS - Previous Month</h4>
               <div className="grid grid-cols-3 gap-4">
                 {['due_date', 'ref_date', 'branch', 'net_value', 'executive', 'region'].map(key => (
                   <div key={key}>
                     <label className="block font-semibold capitalize mb-1">{key.replace('_', ' ')}</label>
-                    <select
-                      className="w-full p-2 border"
+                    <SearchableSelect
+                      options={columns.osPrev}
                       value={mappings.os_jan_mapping?.[key] || ''}
-                      onChange={e =>
+                      onChange={(value) =>
                         setMappings(prev => ({
                           ...prev,
-                          os_jan_mapping: { ...prev.os_jan_mapping, [key]: e.target.value }
+                          os_jan_mapping: { ...prev.os_jan_mapping, [key]: value }
                         }))
                       }
-                    >
-                      <option value="">Select</option>
-                      {columns.osPrev.map(col => (
-                        <option key={col} value={col}>{col}</option>
-                      ))}
-                    </select>
+                      placeholder={`Select ${key.replace('_', ' ')}`}
+                      className="w-full p-2 border"
+                    />
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* OS Current Month Mapping */}
+            {/* OS Current Month Mapping - Updated with SearchableSelect */}
             <div className="mb-6">
               <h4 className="text-blue-600 font-semibold mb-2">OS - Current Month</h4>
               <div className="grid grid-cols-3 gap-4">
                 {['due_date', 'ref_date', 'branch', 'net_value', 'executive', 'region'].map(key => (
                   <div key={key}>
                     <label className="block font-semibold capitalize mb-1">{key.replace('_', ' ')}</label>
-                    <select
-                      className="w-full p-2 border"
+                    <SearchableSelect
+                      options={columns.osCurr}
                       value={mappings.os_feb_mapping?.[key] || ''}
-                      onChange={e =>
+                      onChange={(value) =>
                         setMappings(prev => ({
                           ...prev,
-                          os_feb_mapping: { ...prev.os_feb_mapping, [key]: e.target.value }
+                          os_feb_mapping: { ...prev.os_feb_mapping, [key]: value }
                         }))
                       }
-                    >
-                      <option value="">Select</option>
-                      {columns.osCurr.map(col => (
-                        <option key={col} value={col}>{col}</option>
-                      ))}
-                    </select>
+                      placeholder={`Select ${key.replace('_', ' ')}`}
+                      className="w-full p-2 border"
+                    />
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Sales Mapping */}
+            {/* Sales Mapping - Updated with SearchableSelect */}
             <div className="mb-6">
               <h4 className="text-blue-600 font-semibold mb-2">Sales</h4>
               <div className="grid grid-cols-3 gap-4">
                 {['bill_date', 'due_date', 'branch', 'value', 'executive', 'region'].map(key => (
                   <div key={key}>
                     <label className="block font-semibold capitalize mb-1">{key.replace('_', ' ')}</label>
-                    <select
-                      className="w-full p-2 border"
+                    <SearchableSelect
+                      options={columns.sales}
                       value={mappings.sales_mapping?.[key] || ''}
-                      onChange={e =>
+                      onChange={(value) =>
                         setMappings(prev => ({
                           ...prev,
-                          sales_mapping: { ...prev.sales_mapping, [key]: e.target.value }
+                          sales_mapping: { ...prev.sales_mapping, [key]: value }
                         }))
                       }
-                    >
-                      <option value="">Select</option>
-                      {columns.sales.map(col => (
-                        <option key={col} value={col}>{col}</option>
-                      ))}
-                    </select>
+                      placeholder={`Select ${key.replace('_', ' ')}`}
+                      className="w-full p-2 border"
+                    />
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
+          {/* Keep month selection as regular select */}
           {monthOptions.length > 0 && (
             <div className="mt-6">
               <label className="block font-semibold mb-1">Select Sales Month</label>
@@ -569,7 +562,7 @@ const OdTargetVsCollection = () => {
         </>
       )}
 
-      {/* Results Display */}
+      {/* Results Display - Keep exactly the same */}
       {results.branch_summary.length > 0 && (
         <div className="mt-8">
           <h3 className="text-lg font-bold mb-3 text-blue-700">OD Target vs Collection Results</h3>
