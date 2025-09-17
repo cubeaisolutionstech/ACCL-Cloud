@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useExcelData } from '../context/ExcelDataContext';
+import SearchableSelect from './SearchableSelect'; // Import SearchableSelect
 // Import from your consolidated storage module
 import { addReportToStorage } from '../utils/consolidatedStorage';
 
@@ -535,21 +536,18 @@ const ExecutiveBudgetVsBilled = () => {
                   <label className="block font-medium mb-1">
                     {label} {required && <span className="text-red-500">*</span>}
                   </label>
-                  <select
-                    className={`w-full p-2 border rounded ${required && !columnSelections.sales[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  <SearchableSelect
+                    options={salesColumns}
                     value={columnSelections.sales[key] || ''}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setColumnSelections(prev => ({
                         ...prev,
-                        sales: { ...prev.sales, [key]: e.target.value }
+                        sales: { ...prev.sales, [key]: value }
                       }))
                     }
-                  >
-                    <option value="">Select Column</option>
-                    {salesColumns.map(col => (
-                      <option key={col} value={col}>{col}</option>
-                    ))}
-                  </select>
+                    placeholder={`Select ${label.toLowerCase().replace(' *', '')}`}
+                    className={`w-full p-2 border rounded ${required && !columnSelections.sales[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  />
                 </div>
               ))}
             </div>
@@ -572,21 +570,18 @@ const ExecutiveBudgetVsBilled = () => {
                   <label className="block font-medium mb-1">
                     {label} {required && <span className="text-red-500">*</span>}
                   </label>
-                  <select
-                    className={`w-full p-2 border rounded ${required && !columnSelections.budget[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  <SearchableSelect
+                    options={targetColumns}
                     value={columnSelections.budget[key] || ''}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setColumnSelections(prev => ({
                         ...prev,
-                        budget: { ...prev.budget, [key]: e.target.value }
+                        budget: { ...prev.budget, [key]: value }
                       }))
                     }
-                  >
-                    <option value="">Select Column</option>
-                    {targetColumns.map(col => (
-                      <option key={col} value={col}>{col}</option>
-                    ))}
-                  </select>
+                    placeholder={`Select ${label.toLowerCase().replace(' *', '')}`}
+                    className={`w-full p-2 border rounded ${required && !columnSelections.budget[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  />
                 </div>
               ))}
             </div>
