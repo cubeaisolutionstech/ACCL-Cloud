@@ -427,6 +427,10 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
         val_cols = ["Due Target", "Collection Achieved", "For the month Overdue", "For the month Collection"]
         final[val_cols] = final[val_cols].div(100000).round(2)
         final[["Overall % Achieved", "% Achieved (Selected Month)"]] = final[["Overall % Achieved", "% Achieved (Selected Month)"]].round(2)
+        
+        # ✅ FINAL PERCENTAGE FIX: Apply after scaling/rounding to ensure it sticks
+        final.loc[final['Due Target'] == 0, 'Overall % Achieved'] = 0.0
+        final.loc[final['For the month Overdue'] == 0, '% Achieved (Selected Month)'] = 0.0
 
         # Sort + TOTAL
         final.sort_values("Executive", inplace=True)
