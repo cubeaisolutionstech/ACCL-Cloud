@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useExcelData } from '../context/ExcelDataContext';
+import SearchableSelect from './SearchableSelect'; // Import SearchableSelect
 import { addReportToStorage } from '../utils/consolidatedStorage';
 
 const ProductGrowth = () => {
@@ -34,7 +35,7 @@ const ProductGrowth = () => {
 
   const fetchSheetNames = async () => {
     const load = async (filename) => {
-      const res = await axios.post('/api/branch/sheets', { filename });
+      const res = await axios.post('http://localhost:5000/api/branch/sheets', { filename });
       return res.data.sheets || [];
     };
     const [lySheets, cySheets, budgetSheets] = await Promise.all([
@@ -49,7 +50,7 @@ const ProductGrowth = () => {
     setLoadingFilters(true);
     try {
       const fetchColumns = async (filename, sheet, header) => {
-        const res = await axios.post('/api/branch/get_columns', {
+        const res = await axios.post('http://localhost:5000/api/branch/get_columns', {
           filename,
           sheet_name: sheet,
           header
@@ -63,7 +64,7 @@ const ProductGrowth = () => {
         fetchColumns(selectedFiles.budgetFile, selectedSheet.budget, headers.budget)
       ]);
 
-      const res = await axios.post('/api/branch/auto_map_product_growth', {
+      const res = await axios.post('http://localhost:5000/api/branch/auto_map_product_growth', {
         ly_columns: lyCols,
         cy_columns: cyCols,
         budget_columns: budgetCols
@@ -153,7 +154,7 @@ const ProductGrowth = () => {
     console.log("fetchFilters payload:", payload);
 
     try {
-      const res = await axios.post('/api/branch/get_product_growth_filters', payload);
+      const res = await axios.post('http://localhost:5000/api/branch/get_product_growth_filters', payload);
       console.log("Filters response:", res.data);
 
       setAvailableMonths({ ly: res.data.ly_months, cy: res.data.cy_months });
@@ -383,7 +384,7 @@ const ProductGrowth = () => {
 
       console.log("📤 Product Growth API Payload:", payload);
 
-      const res = await axios.post("/api/branch/calculate_product_growth", payload);
+      const res = await axios.post("http://localhost:5000/api/branch/calculate_product_growth", payload);
       console.log("📥 Product Growth API Response:", res.data);
       
       if (res && res.data && res.data.status === 'success' && res.data.results) {
@@ -422,7 +423,7 @@ const ProductGrowth = () => {
       };
 
       const response = await axios.post(
-        "/api/branch/download_product_growth_ppt",
+        "http://localhost:5000/api/branch/download_product_growth_ppt",
         payload,
         { responseType: "blob" }
       );
@@ -469,7 +470,7 @@ const ProductGrowth = () => {
     <div className="p-4">
       <h2 className="text-xl font-bold text-blue-800 mb-4">Product Growth</h2>
       
-      {/* Sheet Selection Grid */}
+      {/* Sheet Selection Grid - Keep as regular select */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {['ly', 'cy', 'budget'].map((key) => (
           <div key={key}>
@@ -510,7 +511,7 @@ const ProductGrowth = () => {
         </div>
       )}
 
-      {/* Column Mapping Preview */}
+      {/* Column Mapping Preview - Updated with SearchableSelect */}
       {Object.keys(mappingsOverride.ly || {}).length > 0 && (
         <>
           <div className="space-y-10">
@@ -525,21 +526,18 @@ const ProductGrowth = () => {
                       <label className="block font-semibold mb-1 capitalize">
                         {colKey.replace(/_/g, ' ')}
                       </label>
-                      <select
-                        className="w-full p-2 border"
+                      <SearchableSelect
+                        options={allCols[key] || []}
                         value={mappingsOverride[key]?.[colKey] || ''}
-                        onChange={(e) =>
+                        onChange={(value) =>
                           setMappingsOverride((prev) => ({
                             ...prev,
-                            [key]: { ...prev[key], [colKey]: e.target.value }
+                            [key]: { ...prev[key], [colKey]: value }
                           }))
                         }
-                      >
-                        <option value="">Select</option>
-                        {allCols[key]?.map((col) => (
-                          <option key={col}>{col}</option>
-                        ))}
-                      </select>
+                        placeholder={`Select ${colKey.replace(/_/g, ' ')}`}
+                        className="w-full p-2 border"
+                      />
                     </div>
                   ))}
                 </div>
@@ -555,7 +553,7 @@ const ProductGrowth = () => {
             </div>
           )}
     
-          {/* Month Range Selection */}
+          {/* Month Range Selection - Keep as regular select for CY */}
           {availableMonths.ly.length > 0 && availableMonths.cy.length > 0 && (
             <div className="mt-10">
               <h3 className="text-blue-700 font-semibold text-lg mb-2">Select Month Range</h3>
@@ -609,7 +607,7 @@ const ProductGrowth = () => {
                   </div>
                 </div>
 
-                {/* Current Month (single-select) */}
+                {/* Current Month (single-select) - Keep as regular select */}
                 <div>
                   <label className="block mb-1 font-medium">
                     {getFileTypeLabel('cy', 'month')}
