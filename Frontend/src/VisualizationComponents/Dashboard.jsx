@@ -302,7 +302,7 @@ function Dashboard() {
                        colStr.includes(selectedMonth.toLowerCase().slice(0, 3));
         const yearOk = !selectedYear || selectedYear === "Select All" || 
                        colStr.includes(String(selectedYear).slice(-2));
-    
+
         return monthOk && yearOk;
       };
     
@@ -310,9 +310,8 @@ function Dashboard() {
       const handleFileUpload = async (event) => {
       const file = event.target.files[0];
       if (!file) return;
-    
-      setIsLoading(true);
-      setIsProcessing(true);
+
+      setIsProcessing(true); // Only set processing, not loading
       setProcessingProgress(0);
       setUploadedFile(file);
       setError(null);
@@ -321,22 +320,22 @@ function Dashboard() {
       setTableChoice('');
       setTableAvailability({});
       setSheetType('');
-    
+
       try {
         setProcessingProgress(20);
         const result = await api.uploadFile(file);
         setProcessingProgress(60);
-    
+
         if (!result.sheet_names || result.sheet_names.length === 0) {
           throw new Error("No sheets found in the uploaded file.");
         }
         if (!result.preview_data || result.preview_data.length === 0) {
           throw new Error("Preview data is empty. The sheet may not contain valid table data.");
         }
-    
+
         setSheetNames(result.sheet_names);
         setSelectedSheet(result.sheet_names[0] || '');
-    
+
         const sheetName = result.sheet_names[0].toLowerCase();
         let detectedSheetType = 'Unknown';
         if (sheetName.includes('sales analysis month-wise') || 
@@ -351,7 +350,7 @@ function Dashboard() {
           detectedSheetType = 'Product Analysis';
         }
         setSheetType(detectedSheetType);
-    
+
         // Initialize FileReader
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -369,7 +368,6 @@ function Dashboard() {
       } catch (err) {
         setError(err.message);
       } finally {
-        setIsLoading(false);
         setIsProcessing(false);
       }
     };
@@ -379,8 +377,7 @@ function Dashboard() {
         if (!fileData || !selectedSheet) return;
     
         const processSheet = async () => {
-          setIsLoading(true);
-          setIsProcessing(true);
+          setIsProcessing(true); // Only set processing state
           setIsTableLoading(true);
           setProcessingProgress(0);
           setError(null);
@@ -440,11 +437,24 @@ function Dashboard() {
               setTableOptions([]);
               setTableChoice('');
             }
-    
-            if (result.months) setMonths(['Select All', ...result.months]);
-            if (result.years) setYears(['Select All', ...result.years]);
-            if (result.branches) setBranches(['Select All', ...result.branches]);
-            if (result.products) setProducts(['Select All', ...result.products]);
+
+            // FIXED: Filter arrays to prevent duplicate "Select All"
+            if (result.months) {
+              const uniqueMonths = result.months.filter(month => month !== 'Select All');
+              setMonths(['Select All', ...uniqueMonths]);
+            }
+            if (result.years) {
+              const uniqueYears = result.years.filter(year => year !== 'Select All');
+              setYears(['Select All', ...uniqueYears]);
+            }
+            if (result.branches) {
+              const uniqueBranches = result.branches.filter(branch => branch !== 'Select All');
+              setBranches(['Select All', ...uniqueBranches]);
+            }
+            if (result.products) {
+              const uniqueProducts = result.products.filter(product => product !== 'Select All');
+              setProducts(['Select All', ...uniqueProducts]);
+            }
     
             setProcessingProgress(90);
           } catch (err) {
@@ -457,7 +467,6 @@ function Dashboard() {
               setTableChoice('');
             }
           } finally {
-            setIsLoading(false);
             setIsProcessing(false);
             setIsTableLoading(false);
             setProcessingProgress(100);
@@ -1234,8 +1243,7 @@ function Dashboard() {
         }
     
         const generateViz = async () => {
-          setIsLoading(true);
-          setIsProcessing(true);
+          setIsProcessing(true); // Only set processing state
           setProcessingProgress(0);
     
           try {
@@ -1284,7 +1292,6 @@ function Dashboard() {
             console.error("Visualization generation error:", err);
             setError(`Error generating visualizations: ${err.message}`);
           } finally {
-            setIsLoading(false);
             setIsProcessing(false);
             setProcessingProgress(100);
           }
