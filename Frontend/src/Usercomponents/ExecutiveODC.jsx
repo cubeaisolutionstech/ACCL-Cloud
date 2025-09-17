@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useExcelData } from '../context/ExcelDataContext';
+import SearchableSelect from './SearchableSelect'; // Import SearchableSelect
 import { addReportToStorage } from '../utils/consolidatedStorage';
 
 const ExecutiveODC = () => {
@@ -471,21 +472,18 @@ const ExecutiveODC = () => {
                   <label className="block font-medium mb-1">
                     {label} {required && <span className="text-red-500">*</span>}
                   </label>
-                  <select
-                    className={`w-full p-2 border rounded ${required && !columnSelections.osJan[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  <SearchableSelect
+                    options={osJanColumns}
                     value={columnSelections.osJan[key] || ''}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setColumnSelections(prev => ({
                         ...prev,
-                        osJan: { ...prev.osJan, [key]: e.target.value }
+                        osJan: { ...prev.osJan, [key]: value }
                       }))
                     }
-                  >
-                    <option value="">Select Column</option>
-                    {osJanColumns.map(col => (
-                      <option key={col} value={col}>{col}</option>
-                    ))}
-                  </select>
+                    placeholder={`Select ${label.toLowerCase().replace(' *', '')}`}
+                    className={`w-full p-2 border rounded ${required && !columnSelections.osJan[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  />
                 </div>
               ))}
             </div>
@@ -507,21 +505,18 @@ const ExecutiveODC = () => {
                   <label className="block font-medium mb-1">
                     {label} {required && <span className="text-red-500">*</span>}
                   </label>
-                  <select
-                    className={`w-full p-2 border rounded ${required && !columnSelections.osFeb[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  <SearchableSelect
+                    options={osFebColumns}
                     value={columnSelections.osFeb[key] || ''}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setColumnSelections(prev => ({
                         ...prev,
-                        osFeb: { ...prev.osFeb, [key]: e.target.value }
+                        osFeb: { ...prev.osFeb, [key]: value }
                       }))
                     }
-                  >
-                    <option value="">Select Column</option>
-                    {osFebColumns.map(col => (
-                      <option key={col} value={col}>{col}</option>
-                    ))}
-                  </select>
+                    placeholder={`Select ${label.toLowerCase().replace(' *', '')}`}
+                    className={`w-full p-2 border rounded ${required && !columnSelections.osFeb[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  />
                 </div>
               ))}
             </div>
@@ -543,21 +538,18 @@ const ExecutiveODC = () => {
                   <label className="block font-medium mb-1">
                     {label} {required && <span className="text-red-500">*</span>}
                   </label>
-                  <select
-                    className={`w-full p-2 border rounded ${required && !columnSelections.sales[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  <SearchableSelect
+                    options={salesColumns}
                     value={columnSelections.sales[key] || ''}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setColumnSelections(prev => ({
                         ...prev,
-                        sales: { ...prev.sales, [key]: e.target.value }
+                        sales: { ...prev.sales, [key]: value }
                       }))
                     }
-                  >
-                    <option value="">Select Column</option>
-                    {salesColumns.map(col => (
-                      <option key={col} value={col}>{col}</option>
-                    ))}
-                  </select>
+                    placeholder={`Select ${label.toLowerCase().replace(' *', '')}`}
+                    className={`w-full p-2 border rounded ${required && !columnSelections.sales[key] ? 'border-red-300' : 'border-gray-300'}`}
+                  />
                 </div>
               ))}
             </div>
@@ -577,18 +569,15 @@ const ExecutiveODC = () => {
                 <label className="block font-semibold mb-3">
                   Select Month
                 </label>
-                <select
-                  className="w-full p-2 border border-gray-300 rounded"
+                <SearchableSelect
+                  options={monthOptions}
                   value={filters.selectedMonth}
-                  onChange={(e) => {
-                    setFilters(prev => ({ ...prev, selectedMonth: e.target.value }));
+                  onChange={(value) => {
+                    setFilters(prev => ({ ...prev, selectedMonth: value }));
                   }}
-                >
-                  <option value="">Select Month</option>
-                  {monthOptions.map(month => (
-                    <option key={month} value={month}>{month}</option>
-                  ))}
-                </select>
+                  placeholder="Select month"
+                  className="w-full p-2 border border-gray-300 rounded"
+                />
               </div>
             )}
 
