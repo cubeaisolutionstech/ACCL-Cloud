@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useExcelData } from '../context/ExcelDataContext';
+import SearchableSelect from './SearchableSelect'; // Import SearchableSelect
 import { addReportToStorage } from '../utils/consolidatedStorage';
 
 const CustomerODAnalysis = () => {
@@ -489,55 +490,43 @@ const BilledCustomersTab = ({ tabState, updateTabState, selectedFiles }) => {
          <div className="grid grid-cols-2 gap-4">
            <div>
              <label className="block font-medium mb-1">Date Column *</label>
-             <select
-               className="w-full p-2 border border-gray-300 rounded"
+             <SearchableSelect
+               options={tabState.columns}
                value={tabState.columnSelections.date || ''}
-               onChange={(e) => handleColumnChange('date', e.target.value)}
-             >
-               <option value="">Select Column</option>
-               {tabState.columns.map(col => (
-                 <option key={col} value={col}>{col}</option>
-               ))}
-             </select>
+               onChange={(value) => handleColumnChange('date', value)}
+               placeholder="Select date column"
+               className="w-full p-2 border border-gray-300 rounded"
+             />
            </div>
            <div>
              <label className="block font-medium mb-1">Branch Column *</label>
-             <select
-               className="w-full p-2 border border-gray-300 rounded"
+             <SearchableSelect
+               options={tabState.columns}
                value={tabState.columnSelections.branch || ''}
-               onChange={(e) => handleColumnChange('branch', e.target.value)}
-             >
-               <option value="">Select Column</option>
-               {tabState.columns.map(col => (
-                 <option key={col} value={col}>{col}</option>
-               ))}
-             </select>
+               onChange={(value) => handleColumnChange('branch', value)}
+               placeholder="Select branch column"
+               className="w-full p-2 border border-gray-300 rounded"
+             />
            </div>
            <div>
              <label className="block font-medium mb-1">Customer ID Column *</label>
-             <select
-               className="w-full p-2 border border-gray-300 rounded"
+             <SearchableSelect
+               options={tabState.columns}
                value={tabState.columnSelections.customer_id || ''}
-               onChange={(e) => handleColumnChange('customer_id', e.target.value)}
-             >
-               <option value="">Select Column</option>
-               {tabState.columns.map(col => (
-                 <option key={col} value={col}>{col}</option>
-               ))}
-             </select>
+               onChange={(value) => handleColumnChange('customer_id', value)}
+               placeholder="Select customer ID column"
+               className="w-full p-2 border border-gray-300 rounded"
+             />
            </div>
            <div>
              <label className="block font-medium mb-1">Executive Column *</label>
-             <select
-               className="w-full p-2 border border-gray-300 rounded"
+             <SearchableSelect
+               options={tabState.columns}
                value={tabState.columnSelections.executive || ''}
-               onChange={(e) => handleColumnChange('executive', e.target.value)}
-             >
-               <option value="">Select Column</option>
-               {tabState.columns.map(col => (
-                 <option key={col} value={col}>{col}</option>
-               ))}
-             </select>
+               onChange={(value) => handleColumnChange('executive', value)}
+               placeholder="Select executive column"
+               className="w-full p-2 border border-gray-300 rounded"
+             />
            </div>
          </div>
        </div>
@@ -1201,55 +1190,43 @@ const ODTargetTab = ({ tabState, updateTabState, selectedFiles }) => {
              <div className="grid grid-cols-2 gap-4">
                <div>
                  <label className="block font-medium mb-1">Area Column *</label>
-                 <select
-                   className="w-full p-2 border border-gray-300 rounded"
+                 <SearchableSelect
+                   options={tabState.columns}
                    value={tabState.columnSelections.area || ''}
-                   onChange={(e) => handleColumnChange('area', e.target.value)}
-                 >
-                   <option value="">Select Column</option>
-                   {tabState.columns.map(col => (
-                     <option key={col} value={col}>{col}</option>
-                   ))}
-                 </select>
+                   onChange={(value) => handleColumnChange('area', value)}
+                   placeholder="Select area column"
+                   className="w-full p-2 border border-gray-300 rounded"
+                 />
                </div>
                <div>
                  <label className="block font-medium mb-1">Net Value Column *</label>
-                 <select
-                   className="w-full p-2 border border-gray-300 rounded"
+                 <SearchableSelect
+                   options={tabState.columns}
                    value={tabState.columnSelections.net_value || ''}
-                   onChange={(e) => handleColumnChange('net_value', e.target.value)}
-                 >
-                   <option value="">Select Column</option>
-                   {tabState.columns.map(col => (
-                     <option key={col} value={col}>{col}</option>
-                   ))}
-                 </select>
+                   onChange={(value) => handleColumnChange('net_value', value)}
+                   placeholder="Select net value column"
+                   className="w-full p-2 border border-gray-300 rounded"
+                 />
                </div>
                <div>
                  <label className="block font-medium mb-1">Due Date Column *</label>
-                 <select
-                   className="w-full p-2 border border-gray-300 rounded"
+                 <SearchableSelect
+                   options={tabState.columns}
                    value={tabState.columnSelections.due_date || ''}
-                   onChange={(e) => handleColumnChange('due_date', e.target.value)}
-                 >
-                   <option value="">Select Column</option>
-                   {tabState.columns.map(col => (
-                     <option key={col} value={col}>{col}</option>
-                   ))}
-                 </select>
+                   onChange={(value) => handleColumnChange('due_date', value)}
+                   placeholder="Select due date column"
+                   className="w-full p-2 border border-gray-300 rounded"
+                 />
                </div>
                <div>
                  <label className="block font-medium mb-1">Executive Column *</label>
-                 <select
-                   className="w-full p-2 border border-gray-300 rounded"
+                 <SearchableSelect
+                   options={tabState.columns}
                    value={tabState.columnSelections.executive || ''}
-                   onChange={(e) => handleColumnChange('executive', e.target.value)}
-                 >
-                   <option value="">Select Column</option>
-                   {tabState.columns.map(col => (
-                     <option key={col} value={col}>{col}</option>
-                   ))}
-                 </select>
+                   onChange={(value) => handleColumnChange('executive', value)}
+                   placeholder="Select executive column"
+                   className="w-full p-2 border border-gray-300 rounded"
+                 />
                </div>
              </div>
            </div>
