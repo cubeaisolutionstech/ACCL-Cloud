@@ -2,17 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Download,
   RefreshCw,
-  TrendingUp,
-  MapPin,
-  Database,
-  Eye,
-  BarChart3,
-  Package,
-  FileText,
-  Save,
-  CheckCircle,
-  AlertCircle,
-  Info
+  Eye
 } from 'lucide-react';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -436,23 +426,23 @@ const RegionAnalysis = ({
 
         {showRegionalHighlights && (
           <div className="regional-legend">
-            <h5>Regional Classifications:</h5>
+            <h5>Regional Classifications</h5>
             <div className="legend-items">
               <div className="legend-item north-legend">
                 <span className="legend-dot north-dot"></span>
-                NORTH TOTAL
+                North Total
               </div>
               <div className="legend-item west-legend">
                 <span className="legend-dot west-dot"></span>
-                WEST SALES
+                West Sales
               </div>
               <div className="legend-item group-legend">
                 <span className="legend-dot group-dot"></span>
-                GROUP COMPANIES
+                Group Companies
               </div>
               <div className="legend-item grand-legend">
                 <span className="legend-dot grand-dot"></span>
-                GRAND TOTAL
+                Grand Total
               </div>
             </div>
           </div>
@@ -517,10 +507,10 @@ const RegionAnalysis = ({
           className="toggle-input"
         />
         <span className="toggle-switch"></span>
-        Auto-generate single-sheet Excel file
+        Auto-generate Excel file
       </label>
       <small className="toggle-help">
-        When enabled, the latest combined region Excel file with both tables in single sheet is automatically generated and stored
+        Automatically generate combined region Excel file with both tables
       </small>
     </div>
   );
@@ -530,15 +520,14 @@ const RegionAnalysis = ({
     
     return (
       <div className="tables-preview-section">
-
         <div className="table-section">
           <div className="table-section-header">
-            <h4> Region-wise SALES in Quantity Table</h4>
+            <h4>Region-wise SALES in Quantity</h4>
             <div className="table-status">
               {regionData.mt ? (
-                <span className="status-badge available">✅ Available ({regionData.mt?.data?.length || 0} regions)</span>
+                <span className="status-badge available">Available ({regionData.mt?.data?.length || 0} regions)</span>
               ) : (
-                <span className="status-badge unavailable">❌ Not Available</span>
+                <span className="status-badge unavailable">Not Available</span>
               )}
             </div>
           </div>
@@ -551,7 +540,6 @@ const RegionAnalysis = ({
             />
           ) : (
             <div className="table-empty-state">
-              <MapPin size={48} />
               <h4>No Region MT Data Available</h4>
               <p>
                 {!canProcess() ? 
@@ -567,12 +555,12 @@ const RegionAnalysis = ({
 
         <div className="table-section">
           <div className="table-section-header">
-            <h4>Region-wise SALES in Value Table</h4>
+            <h4>Region-wise SALES in Value</h4>
             <div className="table-status">
               {regionData.value ? (
-                <span className="status-badge available">✅ Available ({regionData.value?.data?.length || 0} regions)</span>
+                <span className="status-badge available">Available ({regionData.value?.data?.length || 0} regions)</span>
               ) : (
-                <span className="status-badge unavailable">❌ Not Available</span>
+                <span className="status-badge unavailable">Not Available</span>
               )}
             </div>
           </div>
@@ -585,7 +573,6 @@ const RegionAnalysis = ({
             />
           ) : (
             <div className="table-empty-state">
-              <TrendingUp size={48} />
               <h4>No Region Value Data Available</h4>
               <p>
                 {!canProcess() ? 
@@ -621,22 +608,20 @@ const RegionAnalysis = ({
   return (
     <div className="region-analysis-section">
       <div className="section-header">
-        <h2> Region-wise Analysis</h2>
+        <h1>Region-wise Analysis</h1>
         <div className="header-actions">
           <button
             onClick={() => processRegionAnalysis('both')}
             className="btn btn-primary"
             disabled={!canProcess() || loading || processing}
           >
-            {processing ? <RefreshCw size={16} className="spin" /> : <BarChart3 size={16} />}
+            {processing ? <RefreshCw size={16} className="spin" /> : null}
             {processing ? 'Processing...' : 'Refresh Analysis'}
           </button>
 
           {storedFiles.some(f => f.type && f.type.includes('region')) && (
             <div className="integration-status-badge">
-              <Package size={14} />
               <span>Latest file stored</span>
-              <span className="latest-indicator">Latest Only</span>
             </div>
           )}
         </div>
@@ -644,26 +629,23 @@ const RegionAnalysis = ({
 
       <div className="stats-overview">
         <div className="stat-card">
-          <MapPin className="stat-icon" />
-          <div>
+          <div className="stat-content">
             <span className="stat-number">{regionData.mt?.data?.length || 0}</span>
             <span className="stat-label">Region MT Records</span>
           </div>
         </div>
         <div className="stat-card">
-          <TrendingUp className="stat-icon" />
-          <div>
+          <div className="stat-content">
             <span className="stat-number">{regionData.value?.data?.length || 0}</span>
             <span className="stat-label">Region Value Records</span>
           </div>
         </div>
         <div className="stat-card">
-          <Database className="stat-icon" />
-          <div>
+          <div className="stat-content">
             <span className="stat-number">
               {storedFiles.filter(f => f.type && f.type.includes('region')).length > 0 ? '1' : '0'}
             </span>
-            <span className="stat-label">Latest File</span>
+            <span className="stat-label">Stored Files</span>
           </div>
         </div>
       </div>
@@ -674,7 +656,6 @@ const RegionAnalysis = ({
           onClick={() => setActiveSubTab('mt')}
           disabled={!regionData.mt && !processing}
         >
-          <MapPin size={16} />
           SALES in MT
           {regionData.mt && <span className="data-indicator"></span>}
         </button>
@@ -683,7 +664,6 @@ const RegionAnalysis = ({
           onClick={() => setActiveSubTab('value')}
           disabled={!regionData.value && !processing}
         >
-          <TrendingUp size={16} />
           SALES in Value
           {regionData.value && <span className="data-indicator"></span>}
         </button>
@@ -708,7 +688,7 @@ const RegionAnalysis = ({
               />
             ) : (
               <div className="empty-state">
-                <MapPin size={48} />
+                <h3>No MT analysis data</h3>
                 <p>
                   {!canProcess() ? 
                     "Upload Budget and Sales files to start analysis" :
@@ -721,7 +701,6 @@ const RegionAnalysis = ({
                     className="btn btn-primary"
                     disabled={loading || processing}
                   >
-                    <MapPin size={16} />
                     Generate MT Analysis
                   </button>
                 )}
@@ -740,7 +719,6 @@ const RegionAnalysis = ({
               />
             ) : (
               <div className="empty-state">
-                <TrendingUp size={48} />
                 <h3>No Value analysis data</h3>
                 <p>
                   {!canProcess() ? 
@@ -754,7 +732,6 @@ const RegionAnalysis = ({
                     className="btn btn-primary"
                     disabled={loading || processing}
                   >
-                    <TrendingUp size={16} />
                     Generate Value Analysis
                   </button>
                 )}
@@ -775,9 +752,9 @@ const RegionAnalysis = ({
 
       <style jsx>{`
         .region-analysis-section {
-          padding: 20px;
+          padding: 32px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-          background-color: #f8f9fa;
+          background-color: #f8fafc;
           min-height: 100vh;
         }
 
@@ -785,137 +762,108 @@ const RegionAnalysis = ({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 20px;
+          margin-bottom: 32px;
           background: white;
-          padding: 20px;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          padding: 16px 24px; /* Reduced padding to decrease size */
+          border-radius: 8px; /* Slightly smaller border-radius */
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         }
 
-        .section-header h2 {
+        .section-header h1 {
           margin: 0;
-          color: #333;
-          font-size: 24px;
-          font-weight: 600;
+          color: #1e293b;
+          font-size: 24px; /* Reduced font size */
+          font-weight: 700;
+          letter-spacing: -0.025em;
         }
 
         .header-actions {
           display: flex;
-          gap: 10px;
+          gap: 16px;
           align-items: center;
         }
 
         .integration-status-badge {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          background: linear-gradient(135deg, #28a745, #20c997);
-          color: white;
-          padding: 8px 12px;
-          border-radius: 16px;
-          font-size: 12px;
-          font-weight: 500;
-          animation: pulse 2s infinite;
-          position: relative;
-        }
-
-        .latest-indicator {
-          background: rgba(255, 255, 255, 0.2);
-          padding: 2px 6px;
-          border-radius: 8px;
-          font-size: 10px;
-          margin-left: 4px;
-        }
-
-        @keyframes pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-          100% { transform: scale(1); }
+          display: none;
         }
 
         .stats-overview {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 15px;
-          margin-bottom: 20px;
+          gap: 16px;
+          margin-bottom: 32px;
         }
 
         .stat-card {
           background: white;
-          padding: 20px;
+          padding: 16px 20px;
           border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          display: flex;
-          align-items: center;
-          gap: 15px;
-          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+          transition: all 0.3s ease;
+          border-left: 3px solid #3b82f6;
         }
 
         .stat-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 6px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.06);
         }
 
-        .stat-icon {
-          width: 40px;
-          height: 40px;
-          color: #667eea;
-          flex-shrink: 0;
+        .stat-content {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
         }
 
         .stat-number {
-          display: block;
           font-size: 24px;
-          font-weight: bold;
-          color: #333;
-          line-height: 1.2;
+          font-weight: 700;
+          color: #1e293b;
+          line-height: 1;
         }
 
         .stat-label {
-          display: block;
           font-size: 12px;
-          color: #666;
+          color: #64748b;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.05em;
+          font-weight: 600;
         }
 
         .sub-tab-navigation {
           display: flex;
-          gap: 2px;
-          margin-bottom: 20px;
           background: white;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
           overflow: hidden;
+          margin-bottom: 32px;
         }
 
         .sub-tab {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 16px 24px;
+          gap: 12px;
+          padding: 20px 32px;
           background: none;
           border: none;
           border-bottom: 3px solid transparent;
           cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-          color: #6c757d;
-          transition: all 0.2s ease;
-          position: relative;
+          font-size: 16px;
+          font-weight: 600;
+          color: #64748b;
+          transition: all 0.3s ease;
           flex: 1;
           justify-content: center;
+          position: relative;
         }
 
         .sub-tab:hover:not(:disabled) {
-          color: #495057;
-          background: rgba(102, 126, 234, 0.1);
+          color: #1e293b;
+          background: #f8fafc;
         }
 
         .sub-tab.active {
-          color: #667eea;
-          border-bottom-color: #667eea;
-          font-weight: 600;
+          color: #3b82f6;
+          border-bottom-color: #3b82f6;
           background: white;
         }
 
@@ -925,43 +873,38 @@ const RegionAnalysis = ({
         }
 
         .data-indicator {
-          color: #28a745;
-          font-size: 18px;
-          line-height: 1;
+          width: 8px;
+          height: 8px;
+          background: #10b981;
+          border-radius: 50%;
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
 
         .sub-tab-content {
           min-height: 400px;
         }
 
-        .tables-preview-section {
-          padding: 0;
-        }
-
-        .simple-controls {
-          margin-bottom: 30px;
+        .auto-export-control {
+          margin-top: 32px;
           padding: 24px;
           background: white;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .auto-export-control {
-          margin: 0;
-          padding: 20px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          border: 1px solid #e9ecef;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         }
 
         .toggle-label {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 16px;
           cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-          color: #333;
+          font-size: 16px;
+          font-weight: 600;
+          color: #1e293b;
         }
 
         .toggle-input {
@@ -970,10 +913,10 @@ const RegionAnalysis = ({
 
         .toggle-switch {
           position: relative;
-          width: 44px;
-          height: 24px;
-          background: #dee2e6;
-          border-radius: 12px;
+          width: 52px;
+          height: 28px;
+          background: #cbd5e1;
+          border-radius: 14px;
           transition: background 0.3s ease;
         }
 
@@ -982,86 +925,58 @@ const RegionAnalysis = ({
           position: absolute;
           top: 2px;
           left: 2px;
-          width: 20px;
-          height: 20px;
+          width: 24px;
+          height: 24px;
           background: white;
           border-radius: 50%;
           transition: transform 0.3s ease;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .toggle-input:checked + .toggle-switch {
-          background: #667eea;
+          background: #3b82f6;
         }
 
         .toggle-input:checked + .toggle-switch::before {
-          transform: translateX(20px);
+          transform: translateX(24px);
         }
 
         .toggle-help {
           display: block;
-          margin-top: 8px;
-          color: #6c757d;
-          font-size: 12px;
-          font-style: italic;
-          line-height: 1.4;
-        }
-
-        .auto-generation-status {
-          margin-top: 16px;
-          padding: 12px;
-          border-radius: 6px;
+          margin-top: 12px;
+          color: #64748b;
           font-size: 14px;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
+          font-weight: 400;
+          line-height: 1.5;
         }
 
-        .status-success {
-          background: rgba(34, 197, 94, 0.2);
-          color: #065f46;
-          border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-
-        .status-pending {
-          background: rgba(251, 191, 36, 0.2);
-          color: #92400e;
-          border: 1px solid rgba(251, 191, 36, 0.3);
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .spin {
-          animation: spin 1s linear infinite;
+        .tables-preview-section {
+          padding: 0;
         }
 
         .table-section {
           margin-bottom: 32px;
-          border: 1px solid #e0e0e0;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
           overflow: hidden;
           background: white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         }
 
         .table-section-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 20px 24px;
-          background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-          border-bottom: 1px solid #e0e0e0;
+          padding: 24px 32px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
         }
 
         .table-section-header h4 {
           margin: 0;
-          color: #333;
-          font-size: 18px;
-          font-weight: 600;
+          color: #1e293b;
+          font-size: 20px;
+          font-weight: 700;
         }
 
         .table-status {
@@ -1070,42 +985,42 @@ const RegionAnalysis = ({
         }
 
         .status-badge {
-          padding: 6px 12px;
-          border-radius: 16px;
-          font-size: 12px;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 14px;
           font-weight: 600;
           border: 1px solid;
         }
 
         .status-badge.available {
-          background: #d4edda;
-          color: #155724;
-          border-color: #c3e6cb;
+          background: #d1fae5;
+          color: #065f46;
+          border-color: #a7f3d0;
         }
 
         .status-badge.unavailable {
-          background: #f8d7da;
-          color: #721c24;
-          border-color: #f5c6cb;
+          background: #fee2e2;
+          color: #991b1b;
+          border-color: #fecaca;
         }
 
         .table-empty-state {
           text-align: center;
-          padding: 80px 24px;
-          color: #666;
+          padding: 80px 32px;
+          color: #64748b;
         }
 
         .table-empty-state h4 {
-          margin: 24px 0 16px;
-          color: #333;
-          font-size: 20px;
-          font-weight: 600;
+          margin: 0 0 16px;
+          color: #1e293b;
+          font-size: 24px;
+          font-weight: 700;
         }
 
         .table-empty-state p {
-          color: #666;
+          color: #64748b;
           max-width: 500px;
-          margin: 0 auto;
+          margin: 0 auto 24px;
           line-height: 1.6;
           font-size: 16px;
         }
@@ -1116,25 +1031,24 @@ const RegionAnalysis = ({
 
         .tables-summary {
           background: white;
-          border: 1px solid #e0e0e0;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
-          padding: 24px;
+          padding: 32px;
           margin-top: 32px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         }
 
         .export-merged-section {
-          margin-top: 25px;
-          padding: 20px;
-          background: white;
-          border: 2px dashed #667eea;
-          border-radius: 8px;
+          padding: 24px;
+          background: #f8fafc;
+          border: 2px dashed #3b82f6;
+          border-radius: 12px;
           text-align: center;
         }
 
         .export-actions {
           display: flex;
-          gap: 12px;
+          gap: 16px;
           justify-content: center;
           flex-wrap: wrap;
         }
@@ -1144,26 +1058,26 @@ const RegionAnalysis = ({
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 60px 20px;
+          padding: 80px 32px;
           text-align: center;
-          color: #6c757d;
-        }
-
-        .empty-state svg {
-          color: #dee2e6;
-          margin-bottom: 20px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         }
 
         .empty-state h3 {
-          margin: 0 0 10px 0;
-          font-size: 18px;
-          color: #495057;
+          margin: 0 0 16px;
+          font-size: 24px;
+          color: #1e293b;
+          font-weight: 700;
         }
 
         .empty-state p {
-          margin: 0 0 20px 0;
-          font-size: 14px;
+          margin: 0 0 24px;
+          font-size: 16px;
+          color: #64748b;
           max-width: 400px;
+          line-height: 1.6;
         }
 
         .data-preview {
@@ -1176,80 +1090,81 @@ const RegionAnalysis = ({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 15px 20px;
-          background: #f8f9fa;
-          border-bottom: 1px solid #dee2e6;
+          padding: 24px 32px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
         }
 
         .preview-header h4 {
           margin: 0;
-          font-size: 16px;
-          font-weight: 600;
+          font-size: 18px;
+          font-weight: 700;
+          color: #1e293b;
         }
 
         .regional-legend {
-          margin: 15px 20px;
-          padding: 16px;
-          background: #f8fafc;
+          margin: 24px 32px;
+          padding: 20px;
+          background: #f1f5f9;
           border-radius: 8px;
         }
 
         .regional-legend h5 {
-          margin: 0 0 12px 0;
+          margin: 0 0 16px;
           color: #1e293b;
-          font-size: 14px;
-          font-weight: 600;
+          font-size: 16px;
+          font-weight: 700;
         }
 
         .legend-items {
           display: flex;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 16px;
         }
 
         .legend-item {
           display: flex;
           align-items: center;
-          gap: 6px;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: 500;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 600;
         }
 
         .legend-dot {
-          width: 8px;
-          height: 8px;
+          width: 10px;
+          height: 10px;
           border-radius: 50%;
         }
 
         .north-legend {
-          background: #d1e7dd;
-          color: #0f5132;
+          background: #d1fae5;
+          color: #065f46;
         }
         .north-dot {
-          background: #198754;
+          background: #10b981;
         }
 
         .west-legend {
-          background: #fff3cd;
-          color: #664d03;
+          background: #fef3c7;
+          color: #92400e;
         }
         .west-dot {
-          background: #ffc107;
+          background: #f59e0b;
         }
 
         .group-legend {
-          background: #e6f3ff;
-          color: #003d6b;
+          background: #dbeafe;
+          color: #1e40af;
         }
         .group-dot {
-          background: #0ea5e9;
+          background: #3b82f6;
         }
 
         .grand-legend {
-          background: #e2efda;
-          color: #0a5a2a;
+          background: #dcfce7;
+          color: #166534;
         }
         .grand-dot {
           background: #22c55e;
@@ -1264,15 +1179,15 @@ const RegionAnalysis = ({
         .data-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 13px;
+          font-size: 14px;
         }
 
         .data-table th {
           background: #f8fafc;
           color: #374151;
-          padding: 10px 8px;
+          padding: 16px 12px;
           text-align: left;
-          font-weight: 600;
+          font-weight: 700;
           position: sticky;
           top: 0;
           z-index: 10;
@@ -1281,7 +1196,7 @@ const RegionAnalysis = ({
         }
 
         .region-header {
-          background: #3b82f6 !important;
+          background: #1e40af !important;
           color: white !important;
           min-width: 200px;
           position: sticky;
@@ -1295,27 +1210,26 @@ const RegionAnalysis = ({
         }
 
         .data-table td {
-          padding: 8px;
+          padding: 12px;
           border-bottom: 1px solid #f1f5f9;
           border-right: 1px solid #f1f5f9;
           white-space: nowrap;
         }
 
         .region-cell {
-          font-weight: 500;
+          font-weight: 600;
           color: #1e293b;
           background: #f8fafc;
           position: sticky;
           left: 0;
           z-index: 5;
-          border-right: 2px solid #3b82f6;
+          border-right: 2px solid #1e40af;
           min-width: 200px;
-          word-wrap: break-word;
         }
 
         .data-cell {
-          font-family: 'Courier New', monospace;
-          font-size: 13px;
+          font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+          font-size: 14px;
           text-align: right;
         }
 
@@ -1324,39 +1238,39 @@ const RegionAnalysis = ({
         }
 
         .north-total-row {
-          background: #d1e7dd !important;
+          background: #d1fae5 !important;
         }
         .north-total-row .region-cell {
-          background: #198754 !important;
+          background: #10b981 !important;
           color: white !important;
-          font-weight: 700;
+          font-weight: 800;
         }
 
         .west-total-row {
-          background: #fff3cd !important;
+          background: #fef3c7 !important;
         }
         .west-total-row .region-cell {
-          background: #ffc107 !important;
-          color: #664d03 !important;
-          font-weight: 700;
+          background: #f59e0b !important;
+          color: white !important;
+          font-weight: 800;
         }
 
         .group-total-row {
-          background: #e6f3ff !important;
+          background: #dbeafe !important;
         }
         .group-total-row .region-cell {
-          background: #0ea5e9 !important;
+          background: #3b82f6 !important;
           color: white !important;
-          font-weight: 700;
+          font-weight: 800;
         }
 
         .grand-total-row {
-          background: #e2efda !important;
+          background: #dcfce7 !important;
         }
         .grand-total-row .region-cell {
           background: #22c55e !important;
           color: white !important;
-          font-weight: 700;
+          font-weight: 800;
         }
 
         .total-row {
@@ -1364,11 +1278,11 @@ const RegionAnalysis = ({
         }
 
         .data-table tr:hover {
-          background: #f8f9fa;
+          background: #f8fafc;
         }
 
         .data-table tr:hover .region-cell {
-          background: #e9ecef;
+          background: #e2e8f0;
         }
 
         .data-table tr.total-row:hover .region-cell {
@@ -1376,11 +1290,11 @@ const RegionAnalysis = ({
         }
 
         .table-note {
-          padding: 10px 20px;
+          padding: 16px 32px;
           background: #f8fafc;
-          border-top: 1px solid #dee2e6;
-          font-size: 12px;
-          color: #6c757d;
+          border-top: 1px solid #e2e8f0;
+          font-size: 14px;
+          color: #64748b;
           text-align: center;
         }
 
@@ -1388,26 +1302,28 @@ const RegionAnalysis = ({
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 10px;
-          padding: 40px;
-          color: #666;
+          gap: 12px;
+          padding: 48px;
+          color: #64748b;
           background: white;
-          border-radius: 8px;
-          margin: 20px 0;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          border-radius: 12px;
+          margin: 32px 0;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+          font-size: 16px;
+          font-weight: 600;
         }
 
         .btn {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          padding: 10px 16px;
+          gap: 12px;
+          padding: 12px 24px;
           border: none;
-          border-radius: 6px;
-          font-size: 14px;
-          font-weight: 500;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
           text-decoration: none;
           font-family: inherit;
         }
@@ -1419,50 +1335,35 @@ const RegionAnalysis = ({
         }
 
         .btn-primary {
-          background: #667eea;
+          background: #3b82f6;
           color: white;
-          box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+          box-shadow: 0 4px 6px rgba(59, 130, 246, 0.25);
         }
 
         .btn-primary:hover:not(:disabled) {
-          background: #5a67d8;
+          background: #2563eb;
           transform: translateY(-1px);
-          box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-          background: #6c757d;
-          color: white;
-          box-shadow: 0 2px 4px rgba(108, 117, 125, 0.3);
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #545b62;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 8px rgba(108, 117, 125, 0.4);
-        }
-
-        .btn-success {
-          background: #28a745;
-          color: white;
-          box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
-        }
-
-        .btn-success:hover:not(:disabled) {
-          background: #218838;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+          box-shadow: 0 6px 8px rgba(59, 130, 246, 0.3);
         }
 
         .btn-large {
-          padding: 14px 28px;
-          font-size: 16px;
-          font-weight: 600;
+          padding: 16px 32px;
+          font-size: 18px;
+          font-weight: 700;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
         }
 
         @media (max-width: 1024px) {
           .region-analysis-section {
-            padding: 16px;
+            padding: 24px;
           }
 
           .export-actions {
@@ -1473,14 +1374,19 @@ const RegionAnalysis = ({
 
         @media (max-width: 768px) {
           .region-analysis-section {
-            padding: 12px;
+            padding: 16px;
           }
 
           .section-header {
             flex-direction: column;
-            gap: 16px;
+            gap: 20px;
             align-items: stretch;
             text-align: center;
+            padding: 12px 16px; /* Adjusted for smaller screens */
+          }
+
+          .section-header h1 {
+            font-size: 20px; /* Further reduced for smaller screens */
           }
 
           .stats-overview {
@@ -1492,15 +1398,16 @@ const RegionAnalysis = ({
           }
 
           .sub-tab {
-            justify-content: flex-start;
-            padding: 14px 20px;
+            justify-content: center;
+            padding: 16px 24px;
           }
 
           .table-section-header {
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
             align-items: stretch;
             text-align: center;
+            padding: 20px;
           }
 
           .export-actions {
@@ -1510,7 +1417,7 @@ const RegionAnalysis = ({
 
           .legend-items {
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
           }
 
           .data-table th.region-header,
@@ -1518,100 +1425,68 @@ const RegionAnalysis = ({
             min-width: 150px;
           }
 
-          .data-table {
-            font-size: 12px;
-          }
-
-          .data-table th,
-          .data-table td {
-            padding: 8px 10px;
-          }
-
           .toggle-label {
             flex-direction: column;
             align-items: flex-start;
-            gap: 8px;
+            gap: 12px;
           }
         }
 
         @media (max-width: 480px) {
           .region-analysis-section {
-            padding: 8px;
+            padding: 12px;
           }
 
           .section-header {
-            padding: 16px;
+            padding: 10px 12px; /* Further reduced for very small screens */
           }
 
-          .section-header h2 {
-            font-size: 20px;
+          .section-header h1 {
+            font-size: 18px; /* Further reduced font size */
           }
 
           .stat-card {
-            padding: 16px;
-          }
-
-          .stat-icon {
-            width: 32px;
-            height: 32px;
+            padding: 24px;
           }
 
           .stat-number {
-            font-size: 20px;
+            font-size: 32px;
           }
 
           .sub-tab {
-            padding: 12px 16px;
-            font-size: 13px;
+            padding: 14px 20px;
+            font-size: 14px;
           }
 
-          .simple-controls {
+          .auto-export-control {
             padding: 20px;
           }
 
           .tables-summary {
-            padding: 16px;
+            padding: 20px;
           }
 
           .data-table {
-            font-size: 11px;
+            font-size: 13px;
           }
 
           .data-table th,
           .data-table td {
-            padding: 6px 8px;
+            padding: 10px 8px;
           }
 
           .btn {
-            padding: 8px 12px;
-            font-size: 13px;
-          }
-
-          .btn-large {
-            padding: 12px 20px;
+            padding: 10px 20px;
             font-size: 14px;
           }
 
+          .btn-large {
+            padding: 14px 28px;
+            font-size: 16px;
+          }
+
           .export-merged-section {
-            padding: 15px;
-          }
-
-          .auto-export-control {
-            padding: 15px;
-          }
-
-          .toggle-switch {
-            width: 36px;
-            height: 20px;
-          }
-
-          .toggle-switch::before {
-            width: 16px;
-            height: 16px;
-          }
-
-          .toggle-input:checked + .toggle-switch::before {
-            transform: translateX(16px);
+            padding: 20px;
           }
         }
       `}</style>
