@@ -114,7 +114,7 @@ const UserDashboard = ({ onLogout }) => {
               }`}
               onClick={() => setMainTab('visualization')}
             >
-              Visualization
+              Auditor Format
             </button>
             <button
             className={`px-6 py-3 rounded-lg font-semibold transition-colors duration-200 ${
@@ -124,7 +124,7 @@ const UserDashboard = ({ onLogout }) => {
             }`}
             onClick={() => setMainTab('excel_chat')}
           >
-            🤖 Excel Chat
+             Chatbot
           </button>
           </div>
 
@@ -179,7 +179,7 @@ const UserDashboard = ({ onLogout }) => {
                 className={`px-4 py-2 rounded-r-lg ${branchTab  === 'nbc' ? 'bg-blue-700 text-white' : 'bg-blue-200 text-black'}`}
                 onClick={() => setBranchTab('nbc')}
               >
-                Number of Billed Customers
+                Customers & OD Analysis
               </button>
             </div>
           )}
@@ -187,25 +187,25 @@ const UserDashboard = ({ onLogout }) => {
           {activeModule === 'executive' && (
             <div className="mb-4 flex space-x-2">
               <button
-                className={`px-4 py-2 rounded-l-lg ${execTab  === 'exec_budget' ? 'bg-purple-700 text-white' : 'bg-purple-200 text-black'}`}
+                className={`px-4 py-2 rounded-l-lg ${execTab  === 'exec_budget' ?  'bg-blue-700 text-white' : 'bg-blue-200 text-black'}`}
                 onClick={() => setExecTab('exec_budget')}
               >
-                Budget vs Billed
+                Target vs Billed
               </button>
               <button
-                className={`px-4 py-2 ${execTab  === 'exec_od' ? 'bg-purple-700 text-white' : 'bg-purple-200 text-black'}`}
+                className={`px-4 py-2 ${execTab  === 'exec_od' ?  'bg-blue-700 text-white' : 'bg-blue-200 text-black'}`}
                 onClick={() => setExecTab('exec_od')}
               >
                 OD Target vs Collection
               </button>
               <button
-                className={`px-4 py-2 ${execTab  === 'exec_product' ? 'bg-purple-700 text-white' : 'bg-purple-200 text-black'}`}
+                className={`px-4 py-2 ${execTab  === 'exec_product' ?  'bg-blue-700 text-white' : 'bg-blue-200 text-black'}`}
                 onClick={() => setExecTab('exec_product')}
               >
                 Product Growth
               </button>
               <button
-                className={`px-4 py-2 rounded-r-lg ${execTab  === 'exec_nbc' ? 'bg-purple-700 text-white' : 'bg-purple-200 text-black'}`}
+                className={`px-4 py-2 rounded-r-lg ${execTab  === 'exec_nbc' ?  'bg-blue-700 text-white' : 'bg-blue-200 text-black'}`}
                 onClick={() => setExecTab('exec_nbc')}
               >
                 Customer & OD Analysis
@@ -265,7 +265,7 @@ const UserDashboard = ({ onLogout }) => {
                   }`}
                   onClick={() => setVisualizationSubTab('cumulative')}
                 >
-                  📊 Cumulative
+                  Cumulative
                 </button>
 
                 <button
@@ -276,7 +276,7 @@ const UserDashboard = ({ onLogout }) => {
                   }`}
                   onClick={() => setVisualizationSubTab('auditor_format')}
                 >
-                  🔍 Auditor Format
+                   Generate Auditor File
                 </button>
 
                 <button
