@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useExcelData } from "../context/ExcelDataContext";
+import SearchableSelect from './SearchableSelect'; // Import SearchableSelect
 import { addReportToStorage } from '../utils/consolidatedStorage';
 
 
@@ -47,7 +48,7 @@ const OdTargetSubTab = () => {
   }, [odActiveFile, selectedFiles]);
 
   const fetchSheets = async () => {
-    const res = await axios.post("/api/branch/sheets", {
+    const res = await axios.post("http://localhost:5000/api/branch/sheets", {
       filename: activeFilename
     });
     setSheetOptions(res.data.sheets || []);
@@ -59,7 +60,7 @@ const OdTargetSubTab = () => {
   const handleAutoMap = async () => {
     setLoadingAutoMap(true);
     try {
-      const colRes = await axios.post("/api/branch/get_columns", {
+      const colRes = await axios.post("http://localhost:5000/api/branch/get_columns", {
         filename: activeFilename,
         sheet_name: selectedSheet,
         header: headerRow
@@ -67,7 +68,7 @@ const OdTargetSubTab = () => {
       setColumns(colRes.data.columns || []);
       console.log("get column",colRes.data.col)
 
-      const mapRes = await axios.post("/api/branch/get_od_target_columns", {
+      const mapRes = await axios.post("http://localhost:5000/api/branch/get_od_target_columns", {
         columns: colRes.data.columns || []
       });
 
@@ -76,7 +77,7 @@ const OdTargetSubTab = () => {
       setOverride(mapped);
 
       // Fetch unique values for filters
-      const filterRes = await axios.post("/api/branch/get_column_unique_values", {
+      const filterRes = await axios.post("http://localhost:5000/api/branch/get_column_unique_values", {
         filename: activeFilename,          
         sheet_name: selectedSheet,
         header: headerRow,
@@ -150,7 +151,7 @@ const OdTargetSubTab = () => {
       };
 
       const res = await axios.post(
-        "/api/branch/calculate_od_target_table",
+        "http://localhost:5000/api/branch/calculate_od_target_table",
         payload
       );
 
@@ -181,7 +182,7 @@ const OdTargetSubTab = () => {
       console.log("⬇️ Sending to PPT API:", payload);
 
       const res = await axios.post(
-        "/api/branch/download_od_target_ppt",
+        "http://localhost:5000/api/branch/download_od_target_ppt",
         payload,
         { responseType: "blob" }
       );
@@ -287,10 +288,13 @@ const OdTargetSubTab = () => {
           }).map(([key, label]) => (
             <div key={key}>
               <label className="block font-medium mb-1">{label}</label>
-              <select value={override[key] || ""} onChange={(e) => setOverride(prev => ({ ...prev, [key]: e.target.value }))} className="w-full border p-2">
-                <option value="">Select</option>
-                {columns.map(col => <option key={col}>{col}</option>)}
-              </select>
+              <SearchableSelect
+                options={columns}
+                value={override[key] || ''}
+                onChange={(value) => setOverride(prev => ({ ...prev, [key]: value }))}
+                placeholder={`Select ${label.toLowerCase()}`}
+                className="w-full p-2 border"
+              />
             </div>
           ))}
         </div>
