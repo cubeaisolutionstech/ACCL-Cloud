@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useExcelData } from '../context/ExcelDataContext';
+import SearchableSelect from './SearchableSelect'; // Import SearchableSelect
 import OdTargetSubTab from './OdTargetSubTab';
 import { addReportToStorage } from '../utils/consolidatedStorage';
 
@@ -28,7 +29,7 @@ const NumberOfBilledCustomers = () => {
 
   const fetchSheetNames = async () => {
     try {
-      const res = await axios.post('/api/branch/sheets', {
+      const res = await axios.post('http://localhost:5000/api/branch/sheets', {
         filename: selectedFiles.salesFile
       });
       setSalesSheets(res.data.sheets || []);
@@ -43,7 +44,7 @@ const NumberOfBilledCustomers = () => {
   const fetchAutoMap = async () => {
     setLoadingAutoMap(true);
     try {
-      const res = await axios.post('/api/branch/get_columns', {
+      const res = await axios.post('http://localhost:5000/api/branch/get_columns', {
         filename: selectedFiles.salesFile,
         sheet_name: salesSheet,
         header: salesHeader
@@ -51,7 +52,7 @@ const NumberOfBilledCustomers = () => {
       setAllSalesCols(res.data.columns || []);
       console.log("Fetched columns:", res.data.columns);
 
-      const mapRes = await axios.post('/api/branch/get_nbc_columns', {
+      const mapRes = await axios.post('http://localhost:5000/api/branch/get_nbc_columns', {
         filename: selectedFiles.salesFile,
         sheet_name: salesSheet,
         header: salesHeader
@@ -61,7 +62,7 @@ const NumberOfBilledCustomers = () => {
 
       // Auto-fetch filters after column mapping is complete
       if (mapRes.data.mapping) {
-        const filterRes = await axios.post('/api/branch/get_nbc_filters', {
+        const filterRes = await axios.post('http://localhost:5000/api/branch/get_nbc_filters', {
           filename: selectedFiles.salesFile,
           sheet_name: salesSheet,
           header: salesHeader,
@@ -134,7 +135,7 @@ const NumberOfBilledCustomers = () => {
 
       console.log("Generating NBC report with payload:", payload);
 
-      const res = await axios.post('/api/branch/calculate_nbc_table', payload);
+      const res = await axios.post('http://localhost:5000/api/branch/calculate_nbc_table', payload);
       
       if (res.data && res.data.results) {
         console.log("NBC Results received:", res.data.results);
@@ -187,7 +188,7 @@ const NumberOfBilledCustomers = () => {
       });
 
       // Use fetch instead of axios to avoid any axios CORS handling
-      const response = await fetch("/api/branch/download_nbc_ppt", {
+      const response = await fetch("http://localhost:5000/api/branch/download_nbc_ppt", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -334,16 +335,13 @@ const NumberOfBilledCustomers = () => {
                     <label className="block font-semibold mb-1 capitalize">
                       {key.replace(/_/g, ' ')} <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      className="w-full p-2 border rounded"
+                    <SearchableSelect
+                      options={allSalesCols}
                       value={nbcColumns[key] || ''}
-                      onChange={(e) => setNbcColumns(prev => ({ ...prev, [key]: e.target.value }))}
-                    >
-                      <option value="">Select Column</option>
-                      {allSalesCols.map(col => (
-                        <option key={col} value={col}>{col}</option>
-                      ))}
-                    </select>
+                      onChange={(value) => setNbcColumns(prev => ({ ...prev, [key]: value }))}
+                      placeholder={`Select ${key.replace(/_/g, ' ')}`}
+                      className="w-full p-2 border rounded"
+                    />
                   </div>
                 ))}
               </div>
