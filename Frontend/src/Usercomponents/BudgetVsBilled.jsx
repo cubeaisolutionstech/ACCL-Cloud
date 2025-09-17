@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useExcelData } from '../context/ExcelDataContext';
 import ExecSelector from './ExecSelector';
 import BranchSelector from './BranchSelector';
+import SearchableSelect from './SearchableSelect'; // Import SearchableSelect
 import { addReportToStorage } from '../utils/consolidatedStorage';
 
 const BudgetVsBilled = () => {
@@ -38,7 +39,7 @@ const BudgetVsBilled = () => {
 
   // Fetch available sheet names from backend
   const fetchSheets = async (filename, setter) => {
-    const res = await axios.post('/api/branch/sheets', { filename });
+    const res = await axios.post('http://localhost:5000/api/branch/sheets', { filename });
     setter(res.data.sheets);
   };
 
@@ -58,7 +59,7 @@ const BudgetVsBilled = () => {
     setLoadingColumns(true);
     try{
     const getCols = async (filename, sheet_name, header) => {
-      const res = await axios.post('/api/branch/get_columns', {
+      const res = await axios.post('http://localhost:5000/api/branch/get_columns', {
         filename,
         sheet_name,
         header
@@ -74,7 +75,7 @@ const BudgetVsBilled = () => {
     setSalesColumns(salesCols);
     setBudgetColumns(budgetCols);
 
-    const res = await axios.post('/api/branch/auto_map_columns', {
+    const res = await axios.post('http://localhost:5000/api/branch/auto_map_columns', {
   sales_columns: salesCols,
   budget_columns: budgetCols
 });
@@ -111,7 +112,7 @@ if (
   const salesArea = autoMapData?.sales_mapping?.area || '';
   const budgetArea = autoMapData?.budget_mapping?.area || '';
 
-  const res = await axios.post('/api/branch/get_exec_branch_options', {
+  const res = await axios.post('http://localhost:5000/api/branch/get_exec_branch_options', {
     sales_filename: selectedFiles.salesFile,
     budget_filename: selectedFiles.budgetFile,
     sales_sheet: salesSheet,
@@ -133,7 +134,7 @@ if (
 const fetchMonths = async (dateCol) => {
   if (!dateCol) return;
 
-  const res = await axios.post('/api/branch/extract_months', {
+  const res = await axios.post('http://localhost:5000/api/branch/extract_months', {
     sales_filename: selectedFiles.salesFile,
     sales_sheet: salesSheet,
     sales_header: salesHeader,
@@ -289,7 +290,7 @@ const handleCalculate = async () => {
     };
 
     try{
-    const res = await axios.post('/api/branch/calculate_budget_vs_billed', payload);
+    const res = await axios.post('http://localhost:5000/api/branch/calculate_budget_vs_billed', payload);
     if (res.data && res.data.budget_vs_billed_qty) {
       setResults(res.data);
       addToConsolidatedReports(res.data);
@@ -315,7 +316,7 @@ const handleCalculate = async () => {
     try {
       const payload = createProofPayload();
       const res = await axios.post(
-        '/api/branch/generate_proof_of_calculation',
+        'http://localhost:5000/api/branch/generate_proof_of_calculation',
         payload,
         { responseType: 'blob' }
       );
@@ -382,7 +383,7 @@ const handleCalculate = async () => {
   <div>
     <h2 className="text-xl font-bold text-blue-800 mb-4">Budget vs Billed Report</h2>
 
-    {/* Sheet Selection */}
+    {/* Sheet Selection - Keep as regular select */}
     <div className="grid grid-cols-2 gap-6 mb-6">
       <div>
         <label className="block font-semibold mb-1">Sales Sheet Name</label>
@@ -429,127 +430,106 @@ const handleCalculate = async () => {
     <div className="grid grid-cols-3 gap-4">
       <div>
         <label className="block font-semibold mb-1">Sales Date</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={salesColumns}
           value={columnSelections.sales.date || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              sales: { ...prev.sales, date: e.target.value }
+              sales: { ...prev.sales, date: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {salesColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Date Column"
+          className="w-full p-2 border"
+        />
 
         <label className="block font-semibold mt-2 mb-1">Sales Area</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={salesColumns}
           value={columnSelections.sales.area || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              sales: { ...prev.sales, area: e.target.value }
+              sales: { ...prev.sales, area: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {salesColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Area Column"
+          className="w-full p-2 border"
+        />
       </div>
 
       <div>
         <label className="block font-semibold mb-1">Sales Value</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={salesColumns}
           value={columnSelections.sales.value || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              sales: { ...prev.sales, value: e.target.value }
+              sales: { ...prev.sales, value: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {salesColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Value Column"
+          className="w-full p-2 border"
+        />
 
         <label className="block font-semibold mt-2 mb-1">Sales Quantity</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={salesColumns}
           value={columnSelections.sales.quantity || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              sales: { ...prev.sales, quantity: e.target.value }
+              sales: { ...prev.sales, quantity: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {salesColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Quantity Column"
+          className="w-full p-2 border"
+        />
       </div>
 
       <div>
         <label className="block font-semibold mb-1">Sales Product Group</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={salesColumns}
           value={columnSelections.sales.product_group || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              sales: { ...prev.sales, product_group: e.target.value }
+              sales: { ...prev.sales, product_group: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {salesColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Product Group Column"
+          className="w-full p-2 border"
+        />
 
         <label className="block font-semibold mt-2 mb-1">Sales SL Code</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={salesColumns}
           value={columnSelections.sales.sl_code || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              sales: { ...prev.sales, sl_code: e.target.value }
+              sales: { ...prev.sales, sl_code: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {salesColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select SL Code Column"
+          className="w-full p-2 border"
+        />
 
         <label className="block font-semibold mt-2 mb-1">Sales Executive</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={salesColumns}
           value={columnSelections.sales.executive || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              sales: { ...prev.sales, executive: e.target.value }
+              sales: { ...prev.sales, executive: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {salesColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Executive Column"
+          className="w-full p-2 border"
+        />
       </div>
     </div>
 
@@ -557,110 +537,92 @@ const handleCalculate = async () => {
     <div className="grid grid-cols-3 gap-4">
       <div>
         <label className="block font-semibold mb-1">Budget Area</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={budgetColumns}
           value={columnSelections.budget.area || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              budget: { ...prev.budget, area: e.target.value }
+              budget: { ...prev.budget, area: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {budgetColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Area Column"
+          className="w-full p-2 border"
+        />
 
         <label className="block font-semibold mt-2 mb-1">Budget Value</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={budgetColumns}
           value={columnSelections.budget.value || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              budget: { ...prev.budget, value: e.target.value }
+              budget: { ...prev.budget, value: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {budgetColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Value Column"
+          className="w-full p-2 border"
+        />
       </div>
 
       <div>
         <label className="block font-semibold mb-1">Budget Quantity</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={budgetColumns}
           value={columnSelections.budget.quantity || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              budget: { ...prev.budget, quantity: e.target.value }
+              budget: { ...prev.budget, quantity: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {budgetColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Quantity Column"
+          className="w-full p-2 border"
+        />
 
         <label className="block font-semibold mt-2 mb-1">Budget Product Group</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={budgetColumns}
           value={columnSelections.budget.product_group || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              budget: { ...prev.budget, product_group: e.target.value }
+              budget: { ...prev.budget, product_group: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {budgetColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Product Group Column"
+          className="w-full p-2 border"
+        />
       </div>
 
       <div>
         <label className="block font-semibold mb-1">Budget SL Code</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={budgetColumns}
           value={columnSelections.budget.sl_code || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              budget: { ...prev.budget, sl_code: e.target.value }
+              budget: { ...prev.budget, sl_code: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {budgetColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select SL Code Column"
+          className="w-full p-2 border"
+        />
 
         <label className="block font-semibold mt-2 mb-1">Budget Executive</label>
-        <select
-          className="w-full p-2 border"
+        <SearchableSelect
+          options={budgetColumns}
           value={columnSelections.budget.executive || ''}
-          onChange={(e) =>
+          onChange={(value) =>
             setColumnSelections(prev => ({
               ...prev,
-              budget: { ...prev.budget, executive: e.target.value }
+              budget: { ...prev.budget, executive: value }
             }))
           }
-        >
-          <option value="">Select</option>
-          {budgetColumns.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
+          placeholder="Select Executive Column"
+          className="w-full p-2 border"
+        />
       </div>
     </div>
   </div>
@@ -682,6 +644,7 @@ const handleCalculate = async () => {
     setFilters(prev => ({ ...prev, selectedBranches: selected }))
   }
 />
+{/* Keep month selection as regular select */}
 {monthOptions.length > 0 && (
   <div className="mt-6">
     <label className="block font-semibold mb-1">Select Month</label>
@@ -774,7 +737,7 @@ const handleCalculate = async () => {
       onClick={async () => {
         try {
           const res = await axios.post(
-            '/api/branch/download_ppt',
+            'http://localhost:5000/api/branch/download_ppt',
             {
               month_title: filters.selectedMonth, // Changed from 'month' to 'month_title'
               budget_vs_billed_qty: results.budget_vs_billed_qty.data || [], // Extract data array
