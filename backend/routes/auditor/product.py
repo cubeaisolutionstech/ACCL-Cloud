@@ -2164,7 +2164,7 @@ def export_combined_single_sheet():
             current_row = 0
             
             # Main title
-            main_title = f"Product-wise Sales Analysis - Combined Report (FY {fiscal_year})"
+            main_title = f"Product-wise Sales Analysis -  ({fiscal_year})"
             max_cols = max(len(mt_columns) if mt_columns else 0, len(value_columns) if value_columns else 0)
             if max_cols > 1:
                 worksheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, title_format)
@@ -2186,7 +2186,7 @@ def export_combined_single_sheet():
                 ordered_mt_columns = get_exact_column_order('SALES in Tonage', mt_columns)
                 
                 # MT Table Title
-                mt_title = f"Product-wise SALES in Tonnage Analysis - FY {fiscal_year}"
+                mt_title = f"Product-wise SALES in Tonage Analysis -  {fiscal_year}"
                 if len(ordered_mt_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(ordered_mt_columns) - 1, mt_title, subtitle_format)
                 else:
@@ -2232,7 +2232,7 @@ def export_combined_single_sheet():
                 ordered_value_columns = get_exact_column_order('SALES in Value', value_columns)
                 
                 # Value Table Title
-                value_title = f"Product-wise SALES in Value Analysis - FY {fiscal_year}"
+                value_title = f"Product-wise SALES in Value Analysis - {fiscal_year}"
                 if len(ordered_value_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(ordered_value_columns) - 1, value_title, subtitle_format)
                 else:
@@ -2273,7 +2273,7 @@ def export_combined_single_sheet():
             elif mt_data and not include_both_tables:
                 # Only MT table with proper ordering
                 ordered_mt_columns = get_exact_column_order('SALES in Tonage', mt_columns)
-                mt_title = f"Product-wise SALES in Tonnage Analysis - FY {fiscal_year}"
+                mt_title = f"Product-wise SALES in Tonage Analysis - {fiscal_year}"
                 if len(ordered_mt_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(ordered_mt_columns) - 1, mt_title, subtitle_format)
                 current_row += 2
@@ -2374,7 +2374,7 @@ def get_product_single_sheet_preview():
         
         if mt_data:
             mt_table_info = {
-                'title': f"Product-wise SALES in Tonnage Analysis - FY {fiscal_year}",
+                'title': f"Product-wise SALES in Tonage Analysis - {fiscal_year}",
                 'start_row': current_row,
                 'end_row': current_row + 2 + len(mt_data),
                 'columns': len(mt_columns),
@@ -2387,7 +2387,7 @@ def get_product_single_sheet_preview():
         
         if value_data:
             value_table_info = {
-                'title': f"Product-wise SALES in Value Analysis - FY {fiscal_year}",
+                'title': f"Product-wise SALES in Value Analysis -  {fiscal_year}",
                 'start_row': current_row,
                 'end_row': current_row + 2 + len(value_data),
                 'columns': len(value_columns),
@@ -2530,7 +2530,7 @@ def download_combined_single_sheet():
             current_row = 0
             
             # Main title
-            main_title = f"Product-wise Sales Analysis - Combined Report (FY {fiscal_year})"
+            main_title = f"Product-wise Sales Analysis -  ({fiscal_year})"
             max_cols = max(len(mt_columns) if mt_columns else 0, len(value_columns) if value_columns else 0)
             if max_cols > 1:
                 worksheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, title_format)
@@ -2649,7 +2649,7 @@ def download_combined_single_sheet():
                 ordered_mt_columns = reorder_product_columns(mt_columns, 'SALES in Tonage')
                 
                 # MT Table Title
-                mt_title = f"Product-wise SALES in Tonnage Analysis - FY {fiscal_year}"
+                mt_title = f"Product-wise SALES in Tonage Analysis -  {fiscal_year}"
                 if len(ordered_mt_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(ordered_mt_columns) - 1, mt_title, subtitle_format)
                 else:
@@ -2695,7 +2695,7 @@ def download_combined_single_sheet():
                 ordered_value_columns = reorder_product_columns(value_columns, 'SALES in Value')
                 
                 # Value Table Title
-                value_title = f"Product-wise SALES in Value Analysis - FY {fiscal_year}"
+                value_title = f"Product-wise SALES in Value Analysis - {fiscal_year}"
                 if len(ordered_value_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(ordered_value_columns) - 1, value_title, subtitle_format)
                 else:
@@ -2736,7 +2736,7 @@ def download_combined_single_sheet():
             elif mt_data and not include_both_tables:
                 # Only MT table with proper ordering
                 ordered_mt_columns = reorder_product_columns(mt_columns, 'SALES in Tonage')
-                mt_title = f"Product-wise SALES in Tonnage Analysis - FY {fiscal_year}"
+                mt_title = f"Product-wise SALES in Tonage Analysis - {fiscal_year}"
                 if len(ordered_mt_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(ordered_mt_columns) - 1, mt_title, subtitle_format)
                 current_row += 2
@@ -2797,7 +2797,7 @@ def download_combined_single_sheet():
         return send_file(
             BytesIO(excel_data),
             as_attachment=True,
-            download_name=f"product_combined_download_{fiscal_year}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            download_name=f"product_report{fiscal_year}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
