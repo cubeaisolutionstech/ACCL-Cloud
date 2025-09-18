@@ -1874,7 +1874,7 @@ def export_combined_ero_pw_excel():
             current_row = 0
             
             # Main title
-            main_title = f"ERO-PW Combined Analysis Report - WEST Region (FY {fiscal_year})"
+            main_title = f"ERO-PW Combined Report - WEST Region ({fiscal_year})"
             max_cols = max(len(mt_columns) if mt_columns else 0, len(value_columns) if value_columns else 0)
             if max_cols > 1:
                 worksheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, formats['main_title'])
@@ -1882,13 +1882,13 @@ def export_combined_ero_pw_excel():
             
             # Write MT table
             if mt_data and mt_columns:
-                mt_title = f"ERO-PW Monthly Budget and Actual Tonnage (WEST) [FY {fiscal_year}]"
+                mt_title = f"ERO-PW Monthly Budget and Actual Tonnage (WEST) [{fiscal_year}]"
                 current_row = write_table_data(worksheet, mt_data, mt_columns, current_row, mt_title, formats)
                 current_row += 3  # Add 3 rows spacing between tables
             
             # Write Value table
             if value_data and value_columns:
-                value_title = f"ERO-PW Monthly Budget and Actual Value (WEST) [FY {fiscal_year}]"
+                value_title = f"ERO-PW Monthly Budget and Actual Value (WEST) [{fiscal_year}]"
                 current_row = write_table_data(worksheet, value_data, value_columns, current_row, value_title, formats)
             
             # Footer
