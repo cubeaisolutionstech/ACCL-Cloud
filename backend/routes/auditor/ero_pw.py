@@ -605,6 +605,7 @@ def process_sales_data(df_sales, fiscal_year_start, months):
     except Exception as e:
         print(f"Error processing sales data: {str(e)}")
         return None, None
+
 def read_budget_sheet_with_smart_header(budget_filepath, budget_sheet):
     """
     Read budget sheet with intelligent header detection.
@@ -695,7 +696,6 @@ def read_budget_sheet_with_smart_header(budget_filepath, budget_sheet):
     except Exception as e:
         current_app.logger.error(f"Critical error in smart header detection: {str(e)}")
         raise
-
 
 def build_exact_columns_and_calculate_values(data_df, fiscal_info, analysis_type='mt'):
     """Build exact column structure and calculate all values for ERO-PW with conditional Gr/Ach calculations"""
@@ -979,6 +979,107 @@ def build_exact_columns_and_calculate_values(data_df, fiscal_info, analysis_type
     data_df[fy_extra_budget_col] = data_df[fy_budget_col]
     
     return data_df
+
+def calculate_total_row_with_proper_formulas(valid_products, product_name='TOTAL SALES'):
+    """
+    Calculate total row with proper formulas for Gr and Ach columns
+    Returns a dictionary representing the total row
+    """
+    # Get fiscal year info from the processor
+    fiscal_info = ero_pw_merge_processor.fiscal_info
+    current_fy = fiscal_info['fiscal_year_str']  # e.g., "25-26"
+    last_fy = fiscal_info['last_fiscal_year_str']  # e.g., "24-25"
+    current_start_year = str(fiscal_info['fiscal_year_start'])[-2:]  # e.g., "25"
+    current_end_year = str(fiscal_info['fiscal_year_end'])[-2:]  # e.g., "26"
+    last_start_year = str(fiscal_info['last_fiscal_year_start'])[-2:]  # e.g., "24"
+    last_end_year = str(fiscal_info['last_fiscal_year_end'])[-2:]  # e.g., "25"
+    
+    total_row = {'PRODUCT NAME': product_name}
+    numeric_cols = valid_products.select_dtypes(include=[np.number]).columns
+    
+    current_app.logger.info(f"Calculating totals with fiscal years: Current={current_fy}, Last={last_fy}")
+    
+    for col in numeric_cols:
+        if 'Gr-' in col:  # Growth columns - calculate formula
+            ly_col = None
+            act_col = None
+            
+            if 'YTD' in col:
+                # For YTD columns: Gr-YTD-25-26 (Apr to Jun) -> YTD-24-25 (Apr to Jun)LY, Act-YTD-25-26 (Apr to Jun)
+                ly_col = col.replace(f'Gr-YTD-{current_fy}', f'YTD-{last_fy}')
+                if '(Apr to Jun)' in ly_col:
+                    ly_col = ly_col.replace('(Apr to Jun)', '(Apr to Jun)LY')
+                elif '(Apr to Sep)' in ly_col:
+                    ly_col = ly_col.replace('(Apr to Sep)', '(Apr to Sep)LY')
+                elif '(Apr to Dec)' in ly_col:
+                    ly_col = ly_col.replace('(Apr to Dec)', '(Apr to Dec)LY')
+                elif '(Apr to Mar)' in ly_col:
+                    ly_col = ly_col.replace('(Apr to Mar)', '(Apr to Mar)LY')
+                
+                act_col = col.replace(f'Gr-YTD-{current_fy}', f'Act-YTD-{current_fy}')
+            else:
+                # For monthly columns: Gr-Apr-25 -> LY-Apr-24, Act-Apr-25
+                # Extract month and year from the Growth column
+                if f'-{current_start_year}' in col:
+                    # April-December: Gr-Apr-25 -> LY-Apr-24, Act-Apr-25
+                    ly_col = col.replace('Gr-', 'LY-').replace(f'-{current_start_year}', f'-{last_start_year}')
+                    act_col = col.replace('Gr-', 'Act-')
+                elif f'-{current_end_year}' in col:
+                    # January-March: Gr-Jan-26 -> LY-Jan-25, Act-Jan-26
+                    ly_col = col.replace('Gr-', 'LY-').replace(f'-{current_end_year}', f'-{last_end_year}')
+                    act_col = col.replace('Gr-', 'Act-')
+                else:
+                    # Fallback: simple replacement
+                    ly_col = col.replace('Gr-', 'LY-')
+                    act_col = col.replace('Gr-', 'Act-')
+            
+            total_ly = valid_products[ly_col].sum() if ly_col in valid_products.columns else 0
+            total_act = valid_products[act_col].sum() if act_col in valid_products.columns else 0
+            
+            if total_ly > 0.01:
+                total_row[col] = round(((total_act - total_ly) / total_ly * 100), 2)
+                current_app.logger.info(f"Growth calculation for {col}: LY={total_ly}, Act={total_act}, Gr={total_row[col]}")
+            else:
+                total_row[col] = 0
+                current_app.logger.info(f"Growth calculation for {col}: LY=0, setting Gr=0")
+                
+        elif 'Ach-' in col:  # Achievement columns - calculate formula
+            budget_col = None
+            act_col = None
+            
+            if 'YTD' in col:
+                # For YTD columns: Ach-YTD-25-26 (Apr to Jun) -> YTD-25-26 (Apr to Jun)Budget, Act-YTD-25-26 (Apr to Jun)
+                budget_col = col.replace(f'Ach-YTD-{current_fy}', f'YTD-{current_fy}')
+                if '(Apr to Jun)' in budget_col:
+                    budget_col = budget_col.replace('(Apr to Jun)', '(Apr to Jun)Budget')
+                elif '(Apr to Sep)' in budget_col:
+                    budget_col = budget_col.replace('(Apr to Sep)', '(Apr to Sep)Budget')
+                elif '(Apr to Dec)' in budget_col:
+                    budget_col = budget_col.replace('(Apr to Dec)', '(Apr to Dec)Budget')
+                elif '(Apr to Mar)' in budget_col:
+                    budget_col = budget_col.replace('(Apr to Mar)', '- (Apr to Mar) Budget')
+                
+                act_col = col.replace(f'Ach-YTD-{current_fy}', f'Act-YTD-{current_fy}')
+            else:
+                # For monthly columns: Ach-Apr-25 -> Budget-Apr-25, Act-Apr-25
+                budget_col = col.replace('Ach-', 'Budget-')
+                act_col = col.replace('Ach-', 'Act-')
+            
+            total_budget = valid_products[budget_col].sum() if budget_col in valid_products.columns else 0
+            total_act = valid_products[act_col].sum() if act_col in valid_products.columns else 0
+            
+            if total_budget > 0.01:
+                total_row[col] = round((total_act / total_budget * 100), 2)
+                current_app.logger.info(f"Achievement calculation for {col}: Budget={total_budget}, Act={total_act}, Ach={total_row[col]}")
+            else:
+                total_row[col] = 0
+                current_app.logger.info(f"Achievement calculation for {col}: Budget=0, setting Ach=0")
+                
+        else:  # All other columns - sum normally
+            total_value = valid_products[col].sum()
+            total_row[col] = round(total_value, 2)
+    
+    return total_row
 
 # Main ERO-PW Analysis Processing Endpoint
 @ero_pw_bp.route('/process-ero-pw', methods=['POST'])
@@ -1417,18 +1518,13 @@ def process_ero_pw_analysis():
             # Build EXACT column structure and calculate values
             result_ero_pw_mt = build_exact_columns_and_calculate_values(result_ero_pw_mt, fiscal_info, 'mt')
             
-            # Calculate totals - SUM ALL COLUMNS INCLUDING Gr and Ach
+            # ========== UPDATED: Calculate totals with proper Gr/Ach formulas ==========
             exclude_products = ['WEST TOTAL', 'WEST SALES', 'GRAND TOTAL', 'TOTAL SALES']
             valid_products = result_ero_pw_mt[~result_ero_pw_mt['PRODUCT NAME'].isin(exclude_products)]
             
-            total_row = {'PRODUCT NAME': 'TOTAL SALES'}
-            numeric_cols = result_ero_pw_mt.select_dtypes(include=[np.number]).columns
-            
-            # Sum ALL numeric columns - no exceptions for Gr and Ach
-            for col in numeric_cols:
-                total_value = valid_products[col].sum()
-                total_row[col] = round(total_value, 2)
-                current_app.logger.info(f"ERO-PW MT Total calculated for {col}: {total_value:.2f}")
+            # Use the new function to calculate totals with proper formulas
+            total_row = calculate_total_row_with_proper_formulas(valid_products, 'TOTAL SALES')
+            current_app.logger.info(f"ERO-PW MT Total row calculated with proper formulas")
             
             result_ero_pw_mt = pd.concat([result_ero_pw_mt, pd.DataFrame([total_row])], ignore_index=True)
             result_ero_pw_mt = result_ero_pw_mt.rename(columns={'PRODUCT NAME': 'SALES in Tonage'})
@@ -1496,17 +1592,12 @@ def process_ero_pw_analysis():
             # Build EXACT column structure and calculate values
             result_ero_pw_value = build_exact_columns_and_calculate_values(result_ero_pw_value, fiscal_info, 'value')
             
-            # Calculate totals - SUM ALL COLUMNS INCLUDING Gr and Ach
+            # ========== UPDATED: Calculate totals with proper Gr/Ach formulas ==========
             valid_products = result_ero_pw_value[~result_ero_pw_value['PRODUCT NAME'].isin(exclude_products)]
             
-            total_row = {'PRODUCT NAME': 'TOTAL SALES'}
-            numeric_cols = result_ero_pw_value.select_dtypes(include=[np.number]).columns
-            
-            # Sum ALL numeric columns - no exceptions for Gr and Ach
-            for col in numeric_cols:
-                total_value = valid_products[col].sum()
-                total_row[col] = round(total_value, 2)
-                current_app.logger.info(f"ERO-PW Value Total calculated for {col}: {total_value:.2f}")
+            # Use the new function to calculate totals with proper formulas
+            total_row = calculate_total_row_with_proper_formulas(valid_products, 'TOTAL SALES')
+            current_app.logger.info(f"ERO-PW Value Total row calculated with proper formulas")
             
             result_ero_pw_value = pd.concat([result_ero_pw_value, pd.DataFrame([total_row])], ignore_index=True)
             result_ero_pw_value = result_ero_pw_value.rename(columns={'PRODUCT NAME': 'SALES in Value'})
@@ -1555,6 +1646,10 @@ def process_ero_pw_analysis():
                     'budget_range_columns_removed': True,
                     'duplicate_ytd_budget_removed': True,
                     'other_budget_columns_kept': True
+                },
+                'total_calculation_info': {
+                    'method': 'proper_formulas',
+                    'description': 'Growth and Achievement totals calculated using proper formulas instead of simple sums'
                 }
             }
         })
@@ -1804,7 +1899,8 @@ def export_combined_ero_pw_excel():
                 f"MT Records: {len(mt_data)}",
                 f"Value Records: {len(value_data)}",
                 f"Region: WEST",
-                f"Analysis Type: Combined ERO-PW"
+                f"Analysis Type: Combined ERO-PW",
+                f"Total Calculation: Proper Growth/Achievement Formulas"
             ]
             
             for i, info_line in enumerate(footer_info):
@@ -1828,7 +1924,8 @@ def export_combined_ero_pw_excel():
                 'fiscal_year': fiscal_year,
                 'mt_records': len(mt_data) if mt_data else 0,
                 'value_records': len(value_data) if value_data else 0,
-                'enhanced_formatting': True
+                'enhanced_formatting': True,
+                'proper_formulas': True
             }
         })
     
@@ -1838,219 +1935,3 @@ def export_combined_ero_pw_excel():
             'success': False,
             'error': str(e)
         }), 500
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
