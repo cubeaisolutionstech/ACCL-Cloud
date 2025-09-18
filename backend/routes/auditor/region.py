@@ -1430,7 +1430,7 @@ def download_combined_single_sheet():
             current_row = 0
             
             # Main title
-            main_title = f"Region-wise Sales Analysis - FIXED Gr/Ach Report (FY {fiscal_year})"
+            main_title = f"Region-wise Sales Analysis - ( {fiscal_year})"
             max_cols = max(len(mt_columns) if mt_columns else 0, len(value_columns) if value_columns else 0)
             if max_cols > 1:
                 worksheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, title_format)
@@ -1452,15 +1452,10 @@ def download_combined_single_sheet():
                 else:
                     return None
             
-            # Write MT Data Table
+            # Write MT Data Table (TITLE REMOVED AS REQUESTED)
             if mt_data and include_both_tables:
-                # MT Table Title
-                mt_title = f"Region-wise SALES in Tonnage Analysis - FY {fiscal_year} (FIXED Gr/Ach)"
-                if len(mt_columns) > 1:
-                    worksheet.merge_range(current_row, 0, current_row, len(mt_columns) - 1, mt_title, subtitle_format)
-                else:
-                    worksheet.write(current_row, 0, mt_title, subtitle_format)
-                current_row += 2
+                # Skip the MT title - commented out the title writing section
+                # current_row += 2  # Skip the title space as well
                 
                 # MT Headers
                 for col_num, column_name in enumerate(mt_columns):
@@ -1499,7 +1494,7 @@ def download_combined_single_sheet():
             # Write Value Data Table
             if value_data and include_both_tables:
                 # Value Table Title
-                value_title = f"Region-wise SALES in Value Analysis - FY {fiscal_year} (FIXED Gr/Ach)"
+                value_title = f"Region-wise SALES in Value Analysis -  {fiscal_year}"
                 if len(value_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(value_columns) - 1, value_title, subtitle_format)
                 else:
@@ -1539,11 +1534,8 @@ def download_combined_single_sheet():
             
             # If only one table is requested, write just that table
             elif mt_data and not include_both_tables:
-                # Only MT table
-                mt_title = f"Region-wise SALES in MT Analysis - FY {fiscal_year} (FIXED Gr/Ach)"
-                if len(mt_columns) > 1:
-                    worksheet.merge_range(current_row, 0, current_row, len(mt_columns) - 1, mt_title, subtitle_format)
-                current_row += 2
+                # Only MT table (NO TITLE as requested)
+                # Skip title completely
                 
                 # Write MT data (same logic as above)
                 for col_num, column_name in enumerate(mt_columns):
@@ -1566,7 +1558,7 @@ def download_combined_single_sheet():
                     
             elif value_data and not include_both_tables:
                 # Only Value table
-                value_title = f"Region-wise SALES in Value Analysis - FY {fiscal_year} (FIXED Gr/Ach)"
+                value_title = f"Region-wise SALES in Value Analysis -  {fiscal_year}"
                 if len(value_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(value_columns) - 1, value_title, subtitle_format)
                 current_row += 2
@@ -1622,7 +1614,7 @@ def download_combined_single_sheet():
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"region_FIXED_gr_ach_single_sheet_{fiscal_year}_{timestamp}.xlsx"
+        filename = f"region_sheet_{fiscal_year}_{timestamp}.xlsx"
         
         return send_file(
             BytesIO(excel_data),
@@ -1663,7 +1655,7 @@ def generate_region_report():
         
         # Generate timestamp for filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"region_FIXED_gr_ach_comprehensive_report_{fiscal_year}_{timestamp}.xlsx"
+        filename = f"region_report_{fiscal_year}_{timestamp}.xlsx"
         
         # Create Excel report with multiple sheets
         output = BytesIO()
@@ -1741,11 +1733,11 @@ def generate_region_report():
             
             # Enhanced Combined Analysis Sheet
             if mt_data or value_data:
-                combined_sheet = workbook.add_worksheet('FIXED Gr-Ach Region Analysis')
+                combined_sheet = workbook.add_worksheet(' Region wise Analysis')
                 current_row = 0
                 
                 # Main title
-                main_title = f"FIXED Gr/Ach Region-wise Analysis - FY {fiscal_year}"
+                main_title = f" Region-wise Analysis - {fiscal_year}"
                 max_cols = max(len(mt_columns), len(value_columns))
                 if max_cols > 1:
                     combined_sheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, title_format)
@@ -1753,14 +1745,9 @@ def generate_region_report():
                     combined_sheet.write(current_row, 0, main_title, title_format)
                 current_row += 2
                 
-                # MT Section (only if MT data exists)
+                # MT Section (only if MT data exists) - NO TITLE FOR MT AS REQUESTED
                 if mt_data and mt_columns:
-                    mt_section_title = "SALES in MT Analysis (FIXED Grand Total Gr/Ach Calculations)"
-                    if len(mt_columns) > 1:
-                        combined_sheet.merge_range(current_row, 0, current_row, len(mt_columns) - 1, mt_section_title, subtitle_format)
-                    else:
-                        combined_sheet.write(current_row, 0, mt_section_title, subtitle_format)
-                    current_row += 2
+                    # Skip the MT section title completely as requested
                     
                     # MT Headers
                     for col_num, column_name in enumerate(mt_columns):
@@ -1786,7 +1773,7 @@ def generate_region_report():
                 
                 # Value Section
                 if value_data and value_columns:
-                    value_section_title = "SALES in Value Analysis (FIXED Grand Total Gr/Ach Calculations)"
+                    value_section_title = "SALES in Value Analysis"
                     if len(value_columns) > 1:
                         combined_sheet.merge_range(current_row, 0, current_row, len(value_columns) - 1, value_section_title, subtitle_format)
                     else:
