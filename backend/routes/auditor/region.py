@@ -364,9 +364,59 @@ def process_budget_data(budget_df, group_type='region'):
     
     return budget_data
 
+def calculate_gr_ach_for_totals(df, id_col, fiscal_year_start, fiscal_year_end, 
+                               last_fiscal_year_start, last_fiscal_year_end):
+    """
+    Calculate Growth Rate and Achievement for total rows using formula-based approach
+    """
+    months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+    group_companies = ['GROUP']
+    
+    # Find total rows that need formula-based calculation
+    total_rows_mask = df[id_col].isin(['NORTH TOTAL', 'WEST SALES', 'GROUP COMPANIES', 'GRAND TOTAL'])
+    
+    for month in months:
+        budget_year = str(fiscal_year_start)[-2:] if month in months[:9] else str(fiscal_year_end)[-2:]
+        actual_year = str(fiscal_year_start)[-2:] if month in months[:9] else str(fiscal_year_end)[-2:]
+        ly_year = str(last_fiscal_year_start)[-2:] if month in months[:9] else str(last_fiscal_year_end)[-2:]
+        
+        budget_col = f'Budget-{month}-{budget_year}'
+        actual_col = f'Act-{month}-{actual_year}'
+        ly_col = f'LY-{month}-{ly_year}'
+        gr_col = f'Gr-{month}-{actual_year}'
+        ach_col = f'Ach-{month}-{actual_year}'
+        
+        # Only process if these columns exist
+        if all(col in df.columns for col in [budget_col, actual_col, ly_col, gr_col, ach_col]):
+            # Calculate Gr and Ach for total rows using formula
+            for idx in df[total_rows_mask].index:
+                region_name = df.loc[idx, id_col]
+                budget_val = df.loc[idx, budget_col]
+                actual_val = df.loc[idx, actual_col]
+                ly_val = df.loc[idx, ly_col]
+                
+                # Calculate Growth Rate using formula
+                if pd.notna(ly_val) and ly_val != 0:
+                    gr_val = round(((actual_val - ly_val) / ly_val * 100), 2)
+                else:
+                    gr_val = 0.0
+                df.loc[idx, gr_col] = gr_val
+                
+                # Calculate Achievement using formula (skip for GROUP companies)
+                if 'GROUP' not in str(region_name).upper():
+                    if pd.notna(budget_val) and budget_val > 0:
+                        ach_val = round((actual_val / budget_val * 100), 2)
+                    else:
+                        ach_val = 0.0
+                else:
+                    ach_val = 0.0
+                df.loc[idx, ach_col] = ach_val
+    
+    return df
+
 def add_regional_totals(df, data_type='MT', fiscal_year_start=None, fiscal_year_end=None, 
                        last_fiscal_year_start=None, last_fiscal_year_end=None):
-    """Add regional totals with all required fiscal year parameters"""
+    """Add regional totals with FIXED Gr/Ach calculations using formulas instead of summing percentages"""
     if df.empty:
         return df
     
@@ -380,17 +430,23 @@ def add_regional_totals(df, data_type='MT', fiscal_year_start=None, fiscal_year_
     # Remove existing totals
     df_clean = df[~df[id_col].isin(['NORTH TOTAL', 'WEST SALES', 'GROUP COMPANIES', 'GRAND TOTAL'])].copy()
     
-    def calculate_summed_totals(group_data, group_name):
-        """Sums ALL values including Gr and Ach percentages"""
+    def calculate_totals_with_correct_gr_ach(group_data, group_name):
+        """Sum actual values but exclude Gr and Ach columns (they will be calculated later)"""
         if group_data.empty:
             return None
             
         total_row = {id_col: group_name}
         
-        # Sum ALL numeric columns (including percentages)
+        # Identify Gr and Ach columns that should NOT be summed
+        gr_ach_pattern = r'^(Gr|Ach)-'
+        
+        # Sum only non-percentage columns
         numeric_cols = group_data.select_dtypes(include=[np.number]).columns
         for col in numeric_cols:
-            total_row[col] = group_data[col].sum()
+            if not re.match(gr_ach_pattern, col):  # Don't sum Gr and Ach columns
+                total_row[col] = group_data[col].sum()
+            else:
+                total_row[col] = 0.0  # Initialize Gr/Ach columns to 0, will be calculated later
         
         return total_row
     
@@ -408,9 +464,13 @@ def add_regional_totals(df, data_type='MT', fiscal_year_start=None, fiscal_year_
         else:
             group_data = df_clean[~df_clean[id_col].isin(['NORTH TOTAL', 'WEST SALES', 'GROUP COMPANIES'])]
         
-        total_row = calculate_summed_totals(group_data, total_name)
+        total_row = calculate_totals_with_correct_gr_ach(group_data, total_name)
         if total_row:
             df_clean = pd.concat([df_clean, pd.DataFrame([total_row])], ignore_index=True)
+    
+    # Now calculate Gr and Ach for total rows using the correct formula
+    df_clean = calculate_gr_ach_for_totals(df_clean, id_col, fiscal_year_start, fiscal_year_end,
+                                          last_fiscal_year_start, last_fiscal_year_end)
     
     # Maintain original ordering
     result_df = pd.concat([
@@ -428,7 +488,7 @@ def add_regional_totals(df, data_type='MT', fiscal_year_start=None, fiscal_year_
 
 def add_ytd_calculations_auditor_format(df, data_type='MT', fiscal_year_start=None, fiscal_year_end=None,
                                       last_fiscal_year_start=None, last_fiscal_year_end=None):
-    """Add YTD calculations in auditor format with proper column ordering"""
+    """Add YTD calculations in auditor format with FIXED Grand Total Gr/Ach calculations"""
     if df.empty:
         return df
     
@@ -523,15 +583,16 @@ def add_ytd_calculations_auditor_format(df, data_type='MT', fiscal_year_start=No
                     df.loc[row_idx, ytd_ly_col] = ytd_ly_sum
                     df.loc[row_idx, ytd_actual_col] = ytd_actual_sum
                     
-                    # Calculate YTD Growth Rate (for non-total rows)
+                    # Calculate YTD Growth Rate and Achievement for individual regions only
                     region_name = str(df.loc[row_idx, id_col]).upper()
                     if region_name not in ['NORTH TOTAL', 'WEST SALES', 'GROUP COMPANIES', 'GRAND TOTAL']:
+                        # Growth Rate for individual regions
                         if ytd_ly_sum != 0:
                             df.loc[row_idx, ytd_gr_col] = round(((ytd_actual_sum - ytd_ly_sum) / ytd_ly_sum * 100), 2)
                         else:
                             df.loc[row_idx, ytd_gr_col] = 0.0
                         
-                        # Calculate YTD Achievement (skip for GROUP companies)
+                        # Achievement for individual regions (skip for GROUP companies)
                         if 'GROUP' not in region_name:
                             if ytd_budget_sum > 0:
                                 df.loc[row_idx, ytd_ach_col] = round((ytd_actual_sum / ytd_budget_sum * 100), 2)
@@ -540,30 +601,31 @@ def add_ytd_calculations_auditor_format(df, data_type='MT', fiscal_year_start=No
                         else:
                             df.loc[row_idx, ytd_ach_col] = 0.0
                 
-                # Now handle totals by summing individual regions' YTD Gr/Ach values
-                # North Total
-                north_mask = df[id_col].isin(north_regions)
-                if north_mask.any():
-                    df.loc[df[id_col] == 'NORTH TOTAL', ytd_gr_col] = df[north_mask][ytd_gr_col].sum()
-                    df.loc[df[id_col] == 'NORTH TOTAL', ytd_ach_col] = df[north_mask][ytd_ach_col].sum()
+                # FIXED: Calculate Gr/Ach for total rows using FORMULA based on aggregated values
+                total_regions = ['NORTH TOTAL', 'WEST SALES', 'GROUP COMPANIES', 'GRAND TOTAL']
                 
-                # West Sales
-                west_mask = df[id_col].isin(west_regions)
-                if west_mask.any():
-                    df.loc[df[id_col] == 'WEST SALES', ytd_gr_col] = df[west_mask][ytd_gr_col].sum()
-                    df.loc[df[id_col] == 'WEST SALES', ytd_ach_col] = df[west_mask][ytd_ach_col].sum()
-                
-                # Group Companies (set Ach to 0)
-                group_mask = df[id_col].str.upper().isin([g.upper() for g in group_companies])
-                if group_mask.any():
-                    df.loc[df[id_col] == 'GROUP COMPANIES', ytd_gr_col] = df[group_mask][ytd_gr_col].sum()
-                    df.loc[df[id_col] == 'GROUP COMPANIES', ytd_ach_col] = 0.0
-                
-                # Grand Total (sum of all regions except other totals)
-                non_total_mask = ~df[id_col].isin(['NORTH TOTAL', 'WEST SALES', 'GROUP COMPANIES'])
-                if non_total_mask.any():
-                    df.loc[df[id_col] == 'GRAND TOTAL', ytd_gr_col] = df[non_total_mask][ytd_gr_col].sum()
-                    df.loc[df[id_col] == 'GRAND TOTAL', ytd_ach_col] = df[non_total_mask][ytd_ach_col].sum()
+                for total_region in total_regions:
+                    total_idx = df[df[id_col] == total_region].index
+                    if len(total_idx) > 0:
+                        idx = total_idx[0]
+                        total_ytd_actual = df.loc[idx, ytd_actual_col]
+                        total_ytd_ly = df.loc[idx, ytd_ly_col]
+                        total_ytd_budget = df.loc[idx, ytd_budget_col]
+                        
+                        # Calculate Gr based on aggregated values (FORMULA, not sum of percentages)
+                        if total_ytd_ly != 0:
+                            df.loc[idx, ytd_gr_col] = round(((total_ytd_actual - total_ytd_ly) / total_ytd_ly * 100), 2)
+                        else:
+                            df.loc[idx, ytd_gr_col] = 0.0
+                        
+                        # Calculate Ach based on aggregated values (FORMULA, not sum of percentages)
+                        if 'GROUP' not in total_region.upper():
+                            if total_ytd_budget > 0:
+                                df.loc[idx, ytd_ach_col] = round((total_ytd_actual / total_ytd_budget * 100), 2)
+                            else:
+                                df.loc[idx, ytd_ach_col] = 0.0
+                        else:
+                            df.loc[idx, ytd_ach_col] = 0.0
                 
                 # Add YTD columns to ordered list
                 ordered_columns.extend([ytd_budget_col, ytd_ly_col, ytd_actual_col, ytd_gr_col, ytd_ach_col])
@@ -1000,7 +1062,8 @@ def process_region_analysis():
             numeric_cols = result_mt.select_dtypes(include=[np.number]).columns
             result_mt[numeric_cols] = result_mt[numeric_cols].fillna(0)
             
-            # Calculate Growth Rate and Achievement
+            # Calculate Growth Rate and Achievement for INDIVIDUAL REGIONS ONLY
+            # (Totals will be calculated separately using the correct formula)
             group_companies = ['GROUP']
             
             for month in months:
@@ -1020,33 +1083,45 @@ def process_region_analysis():
                 if ach_col not in result_mt.columns:
                     result_mt[ach_col] = 0.0
                 
-                # Growth Rate calculation
+                # Calculate Gr and Ach for INDIVIDUAL regions only (not totals)
+                individual_mask = ~result_mt['SALES in MT'].isin(['NORTH TOTAL', 'WEST SALES', 'GROUP COMPANIES', 'GRAND TOTAL'])
+                
+                # Growth Rate calculation for individual regions
                 if ly_col in result_mt.columns and actual_col in result_mt.columns:
-                    result_mt[gr_col] = np.where(
-                        (result_mt[ly_col] != 0) & (pd.notna(result_mt[ly_col])) & (pd.notna(result_mt[actual_col])),
-                        ((result_mt[actual_col] - result_mt[ly_col]) / result_mt[ly_col] * 100).round(2),
+                    result_mt.loc[individual_mask, gr_col] = np.where(
+                        (result_mt.loc[individual_mask, ly_col] != 0) & 
+                        (pd.notna(result_mt.loc[individual_mask, ly_col])) & 
+                        (pd.notna(result_mt.loc[individual_mask, actual_col])),
+                        ((result_mt.loc[individual_mask, actual_col] - result_mt.loc[individual_mask, ly_col]) / 
+                         result_mt.loc[individual_mask, ly_col] * 100).round(2),
                         0
                     )
                 
-                # Achievement calculation
+                # Achievement calculation for individual regions
                 if budget_col in result_mt.columns and actual_col in result_mt.columns:
-                    group_mask = result_mt['SALES in MT'].str.upper().isin([g.upper() for g in group_companies])
-                    result_mt[budget_col] = result_mt[budget_col].round(2)
+                    group_mask = result_mt.loc[individual_mask, 'SALES in MT'].str.upper().isin([g.upper() for g in group_companies])
+                    result_mt.loc[individual_mask, budget_col] = result_mt.loc[individual_mask, budget_col].round(2)
                     
-                    result_mt[ach_col] = np.where(
-                        (~group_mask) & (result_mt[budget_col].abs() > 0.01) &
-                        (pd.notna(result_mt[budget_col])) & 
-                        (pd.notna(result_mt[actual_col])),
-                        (result_mt[actual_col] / result_mt[budget_col] * 100).round(2),
+                    # Non-group companies
+                    non_group_individual_mask = individual_mask & ~result_mt['SALES in MT'].str.upper().isin([g.upper() for g in group_companies])
+                    result_mt.loc[non_group_individual_mask, ach_col] = np.where(
+                        (result_mt.loc[non_group_individual_mask, budget_col].abs() > 0.01) &
+                        (pd.notna(result_mt.loc[non_group_individual_mask, budget_col])) & 
+                        (pd.notna(result_mt.loc[non_group_individual_mask, actual_col])),
+                        (result_mt.loc[non_group_individual_mask, actual_col] / 
+                         result_mt.loc[non_group_individual_mask, budget_col] * 100).round(2),
                         0.0
                     )
-                    result_mt[ach_col] = np.where(group_mask, 0.0, result_mt[ach_col])
+                    
+                    # Group companies get 0 achievement
+                    group_individual_mask = individual_mask & result_mt['SALES in MT'].str.upper().isin([g.upper() for g in group_companies])
+                    result_mt.loc[group_individual_mask, ach_col] = 0.0
             
-            # Add regional totals
+            # Add regional totals with FIXED Gr/Ach calculation
             result_mt = add_regional_totals(result_mt, 'MT', fiscal_year_start, fiscal_year_end,
                                           last_fiscal_year_start, last_fiscal_year_end)
             
-            # Apply auditor format
+            # Apply auditor format with FIXED YTD Gr/Ach calculation
             result_mt = add_ytd_calculations_auditor_format(result_mt, 'MT', fiscal_year_start, fiscal_year_end,
                                                           last_fiscal_year_start, last_fiscal_year_end)
         
@@ -1174,7 +1249,7 @@ def process_region_analysis():
             numeric_cols_value = result_value.select_dtypes(include=[np.number]).columns
             result_value[numeric_cols_value] = result_value[numeric_cols_value].fillna(0)
             
-            # Calculate Growth Rate and Achievement (same logic as MT)
+            # Calculate Growth Rate and Achievement for INDIVIDUAL REGIONS ONLY (same logic as MT)
             for month in months:
                 budget_year = str(fiscal_year_start)[-2:] if month in months[:9] else str(fiscal_year_end)[-2:]
                 actual_year = str(fiscal_year_start)[-2:] if month in months[:9] else str(fiscal_year_end)[-2:]
@@ -1192,33 +1267,45 @@ def process_region_analysis():
                 if ach_col not in result_value.columns:
                     result_value[ach_col] = 0.0
                 
-                # Growth Rate calculation
+                # Calculate Gr and Ach for INDIVIDUAL regions only (not totals)
+                individual_mask = ~result_value['SALES in Value'].isin(['NORTH TOTAL', 'WEST SALES', 'GROUP COMPANIES', 'GRAND TOTAL'])
+                
+                # Growth Rate calculation for individual regions
                 if ly_col in result_value.columns and actual_col in result_value.columns:
-                    result_value[gr_col] = np.where(
-                        (result_value[ly_col] != 0) & (pd.notna(result_value[ly_col])) & (pd.notna(result_value[actual_col])),
-                        ((result_value[actual_col] - result_value[ly_col]) / result_value[ly_col] * 100).round(2),
+                    result_value.loc[individual_mask, gr_col] = np.where(
+                        (result_value.loc[individual_mask, ly_col] != 0) & 
+                        (pd.notna(result_value.loc[individual_mask, ly_col])) & 
+                        (pd.notna(result_value.loc[individual_mask, actual_col])),
+                        ((result_value.loc[individual_mask, actual_col] - result_value.loc[individual_mask, ly_col]) / 
+                         result_value.loc[individual_mask, ly_col] * 100).round(2),
                         0
                     )
                 
-                # Achievement calculation
+                # Achievement calculation for individual regions
                 if budget_col in result_value.columns and actual_col in result_value.columns:
-                    group_mask = result_value['SALES in Value'].str.upper().isin([g.upper() for g in group_companies])
-                    result_value[budget_col] = result_value[budget_col].round(2)
+                    group_mask = result_value.loc[individual_mask, 'SALES in Value'].str.upper().isin([g.upper() for g in group_companies])
+                    result_value.loc[individual_mask, budget_col] = result_value.loc[individual_mask, budget_col].round(2)
                     
-                    result_value[ach_col] = np.where(
-                        (~group_mask) & (result_value[budget_col].abs() > 0.01) &
-                        (pd.notna(result_value[budget_col])) & 
-                        (pd.notna(result_value[actual_col])),
-                        (result_value[actual_col] / result_value[budget_col] * 100).round(2),
+                    # Non-group companies
+                    non_group_individual_mask = individual_mask & ~result_value['SALES in Value'].str.upper().isin([g.upper() for g in group_companies])
+                    result_value.loc[non_group_individual_mask, ach_col] = np.where(
+                        (result_value.loc[non_group_individual_mask, budget_col].abs() > 0.01) &
+                        (pd.notna(result_value.loc[non_group_individual_mask, budget_col])) & 
+                        (pd.notna(result_value.loc[non_group_individual_mask, actual_col])),
+                        (result_value.loc[non_group_individual_mask, actual_col] / 
+                         result_value.loc[non_group_individual_mask, budget_col] * 100).round(2),
                         0.0
                     )
-                    result_value[ach_col] = np.where(group_mask, 0.0, result_value[ach_col])
+                    
+                    # Group companies get 0 achievement
+                    group_individual_mask = individual_mask & result_value['SALES in Value'].str.upper().isin([g.upper() for g in group_companies])
+                    result_value.loc[group_individual_mask, ach_col] = 0.0
             
-            # Add regional totals
+            # Add regional totals with FIXED Gr/Ach calculation
             result_value = add_regional_totals(result_value, 'Value', fiscal_year_start, fiscal_year_end,
                                              last_fiscal_year_start, last_fiscal_year_end)
             
-            # Apply auditor format
+            # Apply auditor format with FIXED YTD Gr/Ach calculation
             result_value = add_ytd_calculations_auditor_format(result_value, 'Value', fiscal_year_start, fiscal_year_end,
                                                              last_fiscal_year_start, last_fiscal_year_end)
         
@@ -1343,7 +1430,7 @@ def download_combined_single_sheet():
             current_row = 0
             
             # Main title
-            main_title = f"Region-wise Sales Analysis - Enhanced Report (FY {fiscal_year})"
+            main_title = f"Region-wise Sales Analysis - FIXED Gr/Ach Report (FY {fiscal_year})"
             max_cols = max(len(mt_columns) if mt_columns else 0, len(value_columns) if value_columns else 0)
             if max_cols > 1:
                 worksheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, title_format)
@@ -1368,7 +1455,7 @@ def download_combined_single_sheet():
             # Write MT Data Table
             if mt_data and include_both_tables:
                 # MT Table Title
-                mt_title = f"Region-wise SALES in Tonnage Analysis - FY {fiscal_year}"
+                mt_title = f"Region-wise SALES in Tonnage Analysis - FY {fiscal_year} (FIXED Gr/Ach)"
                 if len(mt_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(mt_columns) - 1, mt_title, subtitle_format)
                 else:
@@ -1412,7 +1499,7 @@ def download_combined_single_sheet():
             # Write Value Data Table
             if value_data and include_both_tables:
                 # Value Table Title
-                value_title = f"Region-wise SALES in Value Analysis - FY {fiscal_year}"
+                value_title = f"Region-wise SALES in Value Analysis - FY {fiscal_year} (FIXED Gr/Ach)"
                 if len(value_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(value_columns) - 1, value_title, subtitle_format)
                 else:
@@ -1453,7 +1540,7 @@ def download_combined_single_sheet():
             # If only one table is requested, write just that table
             elif mt_data and not include_both_tables:
                 # Only MT table
-                mt_title = f"Region-wise SALES in MT Analysis - FY {fiscal_year}"
+                mt_title = f"Region-wise SALES in MT Analysis - FY {fiscal_year} (FIXED Gr/Ach)"
                 if len(mt_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(mt_columns) - 1, mt_title, subtitle_format)
                 current_row += 2
@@ -1479,7 +1566,7 @@ def download_combined_single_sheet():
                     
             elif value_data and not include_both_tables:
                 # Only Value table
-                value_title = f"Region-wise SALES in Value Analysis - FY {fiscal_year}"
+                value_title = f"Region-wise SALES in Value Analysis - FY {fiscal_year} (FIXED Gr/Ach)"
                 if len(value_columns) > 1:
                     worksheet.merge_range(current_row, 0, current_row, len(value_columns) - 1, value_title, subtitle_format)
                 current_row += 2
@@ -1508,6 +1595,7 @@ def download_combined_single_sheet():
             footer_info = [
                 f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                 f"Fiscal Year: {fiscal_year}",
+                f"FIXED: Grand Total Gr/Ach calculated using FORMULA not sum of percentages",
                 f"Enhanced Branch Processing: Enabled",
                 f"MT Records: {len(mt_data)}",
                 f"Value Records: {len(value_data)}",
@@ -1534,7 +1622,7 @@ def download_combined_single_sheet():
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"region_enhanced_single_sheet_{fiscal_year}_{timestamp}.xlsx"
+        filename = f"region_FIXED_gr_ach_single_sheet_{fiscal_year}_{timestamp}.xlsx"
         
         return send_file(
             BytesIO(excel_data),
@@ -1575,7 +1663,7 @@ def generate_region_report():
         
         # Generate timestamp for filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"region_enhanced_comprehensive_report_{fiscal_year}_{timestamp}.xlsx"
+        filename = f"region_FIXED_gr_ach_comprehensive_report_{fiscal_year}_{timestamp}.xlsx"
         
         # Create Excel report with multiple sheets
         output = BytesIO()
@@ -1653,11 +1741,11 @@ def generate_region_report():
             
             # Enhanced Combined Analysis Sheet
             if mt_data or value_data:
-                combined_sheet = workbook.add_worksheet('Enhanced Region Analysis')
+                combined_sheet = workbook.add_worksheet('FIXED Gr-Ach Region Analysis')
                 current_row = 0
                 
                 # Main title
-                main_title = f"Enhanced Region-wise Analysis - FY {fiscal_year}"
+                main_title = f"FIXED Gr/Ach Region-wise Analysis - FY {fiscal_year}"
                 max_cols = max(len(mt_columns), len(value_columns))
                 if max_cols > 1:
                     combined_sheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, title_format)
@@ -1667,7 +1755,7 @@ def generate_region_report():
                 
                 # MT Section (only if MT data exists)
                 if mt_data and mt_columns:
-                    mt_section_title = "SALES in MT Analysis (Enhanced Branch Processing)"
+                    mt_section_title = "SALES in MT Analysis (FIXED Grand Total Gr/Ach Calculations)"
                     if len(mt_columns) > 1:
                         combined_sheet.merge_range(current_row, 0, current_row, len(mt_columns) - 1, mt_section_title, subtitle_format)
                     else:
@@ -1698,7 +1786,7 @@ def generate_region_report():
                 
                 # Value Section
                 if value_data and value_columns:
-                    value_section_title = "SALES in Value Analysis (Enhanced Branch Processing)"
+                    value_section_title = "SALES in Value Analysis (FIXED Grand Total Gr/Ach Calculations)"
                     if len(value_columns) > 1:
                         combined_sheet.merge_range(current_row, 0, current_row, len(value_columns) - 1, value_section_title, subtitle_format)
                     else:
@@ -1729,6 +1817,10 @@ def generate_region_report():
                 current_row += 3
                 footer_info = [
                     f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                    f"CRITICAL FIX APPLIED: Grand Total Gr/Ach calculated using FORMULA",
+                    f"Previous Issue: Grand Total Gr/Ach was sum of percentages (INCORRECT)",
+                    f"Current Fix: Grand Total Gr/Ach = (Total Actual - Total LY) / Total LY * 100",
+                    f"Current Fix: Grand Total Ach = Total Actual / Total Budget * 100",
                     f"Enhanced Branch Processing: ENABLED",
                     f"Branch Name Standardization: ACTIVE",
                     f"Fuzzy Match Threshold: 85%",
