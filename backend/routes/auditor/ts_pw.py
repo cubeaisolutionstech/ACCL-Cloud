@@ -213,38 +213,118 @@ class TSPWMergePreviewProcessor:
         # Get all existing columns that are in our exact order
         existing_columns = [col for col in exact_order if col in df.columns]
     
-    # Get remaining columns (excluding product column)
+        # Get remaining columns (excluding product column)
         other_columns = [col for col in df.columns 
-                    if col not in existing_columns and col != product_col_name]
+                        if col not in existing_columns and col != product_col_name]
     
-    # Create final column order: product column + exact order columns + other columns
+        # Create final column order: product column + exact order columns + other columns
         final_order = [product_col_name] + existing_columns + other_columns
     
-    # Reorder the dataframe
+        # Reorder the dataframe
         df = df[final_order]
     
         return df
         
     def recalculate_totals(self, merged_data, product_col_name):
-        """Recalculate total rows including ALL columns (Budget, LY, Act, Gr, Ach) - FIXED VERSION"""
+        """FIXED: Recalculate total rows - Sum base columns, calculate Gr/Ach with formulas"""
         if 'TOTAL SALES' in merged_data[product_col_name].values:
             numeric_cols = merged_data.select_dtypes(include=[np.number]).columns
-        
-            # Calculate sum for ALL columns including Gr and Ach
+            
+            # Get valid products (exclude totals)
             mask = ~merged_data[product_col_name].isin(self.exclude_from_sort)
             valid_products = merged_data[mask]
-        
-            for col in numeric_cols:
-                # FIXED: For ALL numeric columns, calculate the sum (including Gr and Ach)
+            
+            # Separate base columns from Gr/Ach columns
+            base_cols = [col for col in numeric_cols if not (col.startswith('Gr-') or col.startswith('Ach-'))]
+            gr_cols = [col for col in numeric_cols if col.startswith('Gr-')]
+            ach_cols = [col for col in numeric_cols if col.startswith('Ach-')]
+            
+            current_fy = self.fiscal_info['fiscal_year_str']
+            last_fy = self.fiscal_info['last_fiscal_year_str']
+            
+            # Sum base columns only
+            for col in base_cols:
                 sum_value = valid_products[col].sum()
                 merged_data.loc[
-                     merged_data[product_col_name] == 'TOTAL SALES', col
+                    merged_data[product_col_name] == 'TOTAL SALES', col
                 ] = round(sum_value, 2)
+                current_app.logger.info(f"TS-PW Base total calculated for {col}: {sum_value:.2f}")
+            
+            # Calculate Gr columns using formulas
+            total_sales_idx = merged_data[merged_data[product_col_name] == 'TOTAL SALES'].index[0]
+            
+            for gr_col in gr_cols:
+                # Parse column to find corresponding LY and Actual columns
+                if 'YTD' in gr_col:
+                    # YTD Growth columns
+                    ytd_part = gr_col.replace('Gr-YTD-', '').replace(f'{current_fy} ', '')  # e.g., "(Apr to Jun)"
+                    ly_col = f'YTD-{last_fy} {ytd_part}LY'
+                    act_col = f'Act-YTD-{current_fy} {ytd_part}'
+                else:
+                    # Monthly Growth columns
+                    month_year = gr_col.replace('Gr-', '')  # e.g., "Apr-25"
+                    month, year = month_year.split('-')
+                    
+                    # Find corresponding last year
+                    if month in ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
+                        ly_year = str(self.fiscal_info['last_fiscal_year_start'])[-2:]
+                    else:
+                        ly_year = str(self.fiscal_info['last_fiscal_year_end'])[-2:]
+                    
+                    ly_col = f'LY-{month}-{ly_year}'
+                    act_col = f'Act-{month}-{year}'
                 
-                current_app.logger.info(f"TS-PW Total calculated for {col}: {sum_value:.2f}")
-    
+                # Calculate Growth using formula
+                if ly_col in merged_data.columns and act_col in merged_data.columns:
+                    ly_total = merged_data.loc[total_sales_idx, ly_col]
+                    act_total = merged_data.loc[total_sales_idx, act_col]
+                    
+                    if ly_total > 0.01:
+                        growth_value = ((act_total - ly_total) / ly_total) * 100
+                        merged_data.loc[total_sales_idx, gr_col] = round(growth_value, 2)
+                        current_app.logger.info(f"TS-PW Growth calculated for {gr_col}: {growth_value:.2f}%")
+                    else:
+                        merged_data.loc[total_sales_idx, gr_col] = 0.0
+                else:
+                    merged_data.loc[total_sales_idx, gr_col] = 0.0
+                    current_app.logger.warning(f"Missing columns for {gr_col}: LY={ly_col}, Act={act_col}")
+            
+            # Calculate Ach columns using formulas
+            for ach_col in ach_cols:
+                # Parse column to find corresponding Budget and Actual columns
+                if 'YTD' in ach_col:
+                    # YTD Achievement columns
+                    ytd_part = ach_col.replace('Ach-YTD-', '').replace(f'{current_fy} ', '')  # e.g., "(Apr to Jun)"
+                    
+                    # Handle special case for full year with dash
+                    if '- (Apr to Mar)' in ach_col:
+                        budget_col = f'YTD-{current_fy} - (Apr to Mar) Budget'
+                        act_col = f'Act-YTD-{current_fy} (Apr to Mar)'
+                    else:
+                        budget_col = f'YTD-{current_fy} {ytd_part}Budget'
+                        act_col = f'Act-YTD-{current_fy} {ytd_part}'
+                else:
+                    # Monthly Achievement columns
+                    month_year = ach_col.replace('Ach-', '')  # e.g., "Apr-25"
+                    budget_col = f'Budget-{month_year}'
+                    act_col = f'Act-{month_year}'
+                
+                # Calculate Achievement using formula
+                if budget_col in merged_data.columns and act_col in merged_data.columns:
+                    budget_total = merged_data.loc[total_sales_idx, budget_col]
+                    act_total = merged_data.loc[total_sales_idx, act_col]
+                    
+                    if budget_total > 0.01:
+                        achievement_value = (act_total / budget_total) * 100
+                        merged_data.loc[total_sales_idx, ach_col] = round(achievement_value, 2)
+                        current_app.logger.info(f"TS-PW Achievement calculated for {ach_col}: {achievement_value:.2f}%")
+                    else:
+                        merged_data.loc[total_sales_idx, ach_col] = 0.0
+                else:
+                    merged_data.loc[total_sales_idx, ach_col] = 0.0
+                    current_app.logger.warning(f"Missing columns for {ach_col}: Budget={budget_col}, Act={act_col}")
+        
         return merged_data
-    
 
     def calculate_exact_ytd_periods(self):
         """Calculate YTD periods with EXACT column names as specified"""
@@ -332,7 +412,6 @@ class TSPWMergePreviewProcessor:
         ]
         
         return ytd_periods
-    
 
 # Initialize the processor
 ts_pw_merge_processor = TSPWMergePreviewProcessor()
@@ -552,130 +631,6 @@ def process_budget_data_product_region(budget_df, group_type='product_region'):
 
     return budget_data
 
-def process_sales_data(df_sales, fiscal_year_start, months):
-    """
-    Process current year sales data for TS-PW analysis
-    Returns: tuple of (quantity_data, value_data) or (None, None) on error
-    """
-    try:
-        # Handle multi-index columns if present
-        if isinstance(df_sales.columns, pd.MultiIndex):
-            df_sales.columns = ['_'.join(col).strip() for col in df_sales.columns]
-        
-        # Handle duplicate column names
-        df_sales = handle_duplicate_columns(df_sales)
-        
-        # Find required columns with flexible matching
-        region_col = find_column(df_sales, ['Region', 'Area', 'Zone'], case_sensitive=False)
-        product_col = find_column(df_sales, ['Type (Make)', 'Type(Make)', 'Product', 'Product Group'], case_sensitive=False)
-        date_col = find_column(df_sales, ['Date', 'Month Format', 'Month'], case_sensitive=False)
-        qty_col = find_column(df_sales, ['Actual Quantity', 'Acutal Qty', 'Qty'], case_sensitive=False)
-        value_col = find_column(df_sales, ['Value', 'Amount', 'Sales Value'], case_sensitive=False)
-        
-        # Rename columns to standard names for consistency
-        rename_dict = {}
-        if date_col: rename_dict[date_col] = 'Month_Format'
-        if product_col: rename_dict[product_col] = 'Product_Group'
-        if qty_col: rename_dict[qty_col] = 'Actual_Quantity'
-        if value_col: rename_dict[value_col] = 'Value'
-        if region_col: rename_dict[region_col] = 'Region'
-        
-        df_sales = df_sales.rename(columns=rename_dict)
-        
-        # Process quantity data if available
-        qty_data = None
-        if 'Actual_Quantity' in df_sales.columns and 'Product_Group' in df_sales.columns and 'Month_Format' in df_sales.columns:
-            df_qty = df_sales.copy()
-            
-            # Filter for NORTH region if region column exists
-            if 'Region' in df_qty.columns:
-                df_qty = df_qty[df_qty['Region'].str.strip().str.upper() == 'NORTH']
-            
-            if not df_qty.empty:
-                # Convert quantity to numeric
-                df_qty['Actual_Quantity'] = pd.to_numeric(df_qty['Actual_Quantity'], errors='coerce')
-                
-                # Process month column - handle both datetime and string formats
-                if pd.api.types.is_datetime64_any_dtype(df_qty['Month_Format']):
-                    df_qty['Month'] = pd.to_datetime(df_qty['Month_Format']).dt.strftime('%b')
-                else:
-                    month_str = df_qty['Month_Format'].astype(str).str.strip()
-                    try:
-                        df_qty['Month'] = pd.to_datetime(month_str).dt.strftime('%b')
-                    except ValueError:
-                        df_qty['Month'] = month_str.str[:3]  # Take first 3 chars as month abbreviation
-                
-                # Group by product and month, summing quantities
-                qty_agg = df_qty.groupby(['Product_Group', 'Month'])['Actual_Quantity'].sum().reset_index()
-                qty_agg.columns = ['PRODUCT_NAME', 'Month', 'Actual']
-                
-                # Create Month_Year column with proper fiscal year tagging
-                # April-December use current fiscal year (e.g., 23)
-                # January-March use next fiscal year (e.g., 24)
-                qty_agg['Month_Year'] = qty_agg['Month'].apply(
-                    lambda x: f'Act-{x}-{str(fiscal_year_start)[-2:]}' if x in months[:9] 
-                    else f'Act-{x}-{str(fiscal_year_start + 1)[-2:]}'
-                )
-                
-                # Pivot to wide format with months as columns
-                qty_data = qty_agg.pivot_table(
-                    index='PRODUCT_NAME',
-                    columns='Month_Year',
-                    values='Actual',
-                    aggfunc='sum'
-                ).reset_index().fillna(0)
-                qty_data['Region'] = 'NORTH'
-        
-        # Process value data if available
-        value_data = None
-        if 'Value' in df_sales.columns and 'Product_Group' in df_sales.columns and 'Month_Format' in df_sales.columns:
-            df_value = df_sales.copy()
-            
-            # Filter for NORTH region if region column exists
-            if 'Region' in df_value.columns:
-                df_value = df_value[df_value['Region'].str.strip().str.upper() == 'NORTH']
-            
-            if not df_value.empty:
-                # Convert value to numeric
-                df_value['Value'] = pd.to_numeric(df_value['Value'], errors='coerce')
-                
-                # Process month column - handle both datetime and string formats
-                if pd.api.types.is_datetime64_any_dtype(df_value['Month_Format']):
-                    df_value['Month'] = pd.to_datetime(df_value['Month_Format']).dt.strftime('%b')
-                else:
-                    month_str = df_value['Month_Format'].astype(str).str.strip()
-                    try:
-                        df_value['Month'] = pd.to_datetime(month_str).dt.strftime('%b')
-                    except ValueError:
-                        df_value['Month'] = month_str.str[:3]  # Take first 3 chars as month abbreviation
-                
-                # Group by product and month, summing values
-                value_agg = df_value.groupby(['Product_Group', 'Month'])['Value'].sum().reset_index()
-                value_agg.columns = ['PRODUCT_NAME', 'Month', 'Actual']
-                
-                # Create Month_Year column with proper fiscal year tagging
-                # April-December use current fiscal year (e.g., 23)
-                # January-March use next fiscal year (e.g., 24)
-                value_agg['Month_Year'] = value_agg['Month'].apply(
-                    lambda x: f'Act-{x}-{str(fiscal_year_start)[-2:]}' if x in months[:9] 
-                    else f'Act-{x}-{str(fiscal_year_start + 1)[-2:]}'
-                )
-                
-                # Pivot to wide format with months as columns
-                value_data = value_agg.pivot_table(
-                    index='PRODUCT_NAME',
-                    columns='Month_Year',
-                    values='Actual',
-                    aggfunc='sum'
-                ).reset_index().fillna(0)
-                value_data['Region'] = 'NORTH'
-        
-        return qty_data, value_data
-    
-    except Exception as e:
-        print(f"Error processing sales data: {str(e)}")
-        return None, None
-    
 def build_exact_columns_and_calculate_values(data_df, fiscal_info, analysis_type='mt'):
     """Build exact column structure and calculate all values for TS-PW"""
     
@@ -959,71 +914,174 @@ def build_exact_columns_and_calculate_values(data_df, fiscal_info, analysis_type
     
     return data_df
 
-
-def calculate_ytd_growth_achievement(self, merged_data):
-    """Calculate YTD Growth and Achievement with EXACT column names - UPDATED VERSION"""
-    current_fy = self.fiscal_info['fiscal_year_str']
-    last_fy = self.fiscal_info['last_fiscal_year_str']
+def calculate_mt_totals_fixed(result_ts_pw_mt, fiscal_info, exclude_products):
+    """Calculate MT totals with correct Gr/Ach formulas"""
+    valid_products = result_ts_pw_mt[~result_ts_pw_mt['PRODUCT NAME'].isin(exclude_products)]
     
-    ytd_pairs = [
-        ('Apr to Jun', f'YTD-{current_fy} (Apr to Jun)Budget', 
-         f'YTD-{last_fy} (Apr to Jun)LY', f'Act-YTD-{current_fy} (Apr to Jun)'),
-        ('Apr to Sep', f'YTD-{current_fy} (Apr to Sep)Budget', 
-         f'YTD-{last_fy} (Apr to Sep)LY', f'Act-YTD-{current_fy} (Apr to Sep)'),
-        ('Apr to Dec', f'YTD-{current_fy} (Apr to Dec)Budget', 
-         f'YTD-{last_fy} (Apr to Dec)LY', f'Act-YTD-{current_fy} (Apr to Dec)'),
-        ('Apr to Mar', f'YTD-{current_fy} - (Apr to Mar) Budget',  # Note the DASH
-         f'YTD-{last_fy} (Apr to Mar)LY', f'Act-YTD-{current_fy} (Apr to Mar)')
-    ]
+    total_row = {'PRODUCT NAME': 'TOTAL SALES'}
+    numeric_cols = result_ts_pw_mt.select_dtypes(include=[np.number]).columns
     
-    for period, budget_col, ly_col, act_col in ytd_pairs:
-        # Check if all required columns exist
-        required_cols = [budget_col, ly_col, act_col]
-        existing_cols = [col for col in required_cols if col in merged_data.columns]
-        
-        if len(existing_cols) >= 2:  # At least 2 out of 3 columns needed for calculations
-            # Check if actual column has any non-zero values before calculating Gr and Ach
-            has_actual_data = False
-            if act_col in merged_data.columns:
-                has_actual_data = (merged_data[act_col] > 0.01).any()
-            
-            if has_actual_data:
-                # Growth calculation (if both LY and Actual exist)
-                if ly_col in merged_data.columns and act_col in merged_data.columns:
-                    gr_col = f'Gr-YTD-{current_fy} ({period})'
-                    merged_data[gr_col] = np.where(
-                        merged_data[ly_col] > 0.01,
-                        ((merged_data[act_col] - merged_data[ly_col]) / merged_data[ly_col] * 100).round(2),
-                        0
-                    )
-                    current_app.logger.info(f"Calculated Growth column: {gr_col}")
-                
-                # Achievement calculation (if both Budget and Actual exist)
-                if budget_col in merged_data.columns and act_col in merged_data.columns:
-                    ach_col = f'Ach-YTD-{current_fy} ({period})'
-                    merged_data[ach_col] = np.where(
-                        merged_data[budget_col] > 0.01,
-                        (merged_data[act_col] / merged_data[budget_col] * 100).round(2),
-                        0
-                    )
-                    current_app.logger.info(f"Calculated Achievement column: {ach_col}")
-            else:
-                # If no actual data, set Gr and Ach to 0
-                gr_col = f'Gr-YTD-{current_fy} ({period})'
-                ach_col = f'Ach-YTD-{current_fy} ({period})'
-                
-                if gr_col not in merged_data.columns:
-                    merged_data[gr_col] = 0.0
-                if ach_col not in merged_data.columns:
-                    merged_data[ach_col] = 0.0
-                    
-                current_app.logger.info(f"No actual data found for {period}, set Gr and Ach to 0")
+    # Separate base columns from Gr/Ach columns
+    base_cols = [col for col in numeric_cols if not (col.startswith('Gr-') or col.startswith('Ach-'))]
+    gr_cols = [col for col in numeric_cols if col.startswith('Gr-')]
+    ach_cols = [col for col in numeric_cols if col.startswith('Ach-')]
+    
+    current_fy = fiscal_info['fiscal_year_str']
+    last_fy = fiscal_info['last_fiscal_year_str']
+    
+    # Sum base columns only
+    for col in base_cols:
+        total_value = valid_products[col].sum()
+        total_row[col] = round(total_value, 2)
+        current_app.logger.info(f"TS-PW MT Base total calculated for {col}: {total_value:.2f}")
+    
+    # Calculate Gr columns using formulas
+    for gr_col in gr_cols:
+        if 'YTD' in gr_col:
+            # YTD Growth columns
+            ytd_part = gr_col.replace('Gr-YTD-', '').replace(f'{current_fy} ', '')
+            ly_col = f'YTD-{last_fy} {ytd_part}LY'
+            act_col = f'Act-YTD-{current_fy} {ytd_part}'
         else:
-            current_app.logger.warning(f"Insufficient columns for YTD calculations in period {period}. Found: {existing_cols}")
+            # Monthly Growth columns
+            month_year = gr_col.replace('Gr-', '')
+            month, year = month_year.split('-')
+            
+            if month in ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
+                ly_year = str(fiscal_info['last_fiscal_year_start'])[-2:]
+            else:
+                ly_year = str(fiscal_info['last_fiscal_year_end'])[-2:]
+            
+            ly_col = f'LY-{month}-{ly_year}'
+            act_col = f'Act-{month}-{year}'
+        
+        if ly_col in total_row and act_col in total_row:
+            ly_total = total_row[ly_col]
+            act_total = total_row[act_col]
+            
+            if ly_total > 0.01:
+                total_row[gr_col] = round(((act_total - ly_total) / ly_total) * 100, 2)
+            else:
+                total_row[gr_col] = 0.0
+        else:
+            total_row[gr_col] = 0.0
     
-    return merged_data
-def remove_specific_unwanted_columns(df, product_col_name):
-    """Remove ONLY Region column and budget range columns like Budget-April24dec-24"""
+    # Calculate Ach columns using formulas
+    for ach_col in ach_cols:
+        if 'YTD' in ach_col:
+            # YTD Achievement columns
+            ytd_part = ach_col.replace('Ach-YTD-', '').replace(f'{current_fy} ', '')
+            
+            if '- (Apr to Mar)' in ach_col:
+                budget_col = f'YTD-{current_fy} - (Apr to Mar) Budget'
+                act_col = f'Act-YTD-{current_fy} (Apr to Mar)'
+            else:
+                budget_col = f'YTD-{current_fy} {ytd_part}Budget'
+                act_col = f'Act-YTD-{current_fy} {ytd_part}'
+        else:
+            # Monthly Achievement columns
+            month_year = ach_col.replace('Ach-', '')
+            budget_col = f'Budget-{month_year}'
+            act_col = f'Act-{month_year}'
+        
+        if budget_col in total_row and act_col in total_row:
+            budget_total = total_row[budget_col]
+            act_total = total_row[act_col]
+            
+            if budget_total > 0.01:
+                total_row[ach_col] = round((act_total / budget_total) * 100, 2)
+            else:
+                total_row[ach_col] = 0.0
+        else:
+            total_row[ach_col] = 0.0
+    
+    return total_row
+
+def calculate_value_totals_fixed(result_ts_pw_value, fiscal_info, exclude_products):
+    """Calculate Value totals with correct Gr/Ach formulas"""
+    valid_products = result_ts_pw_value[~result_ts_pw_value['PRODUCT NAME'].isin(exclude_products)]
+    
+    total_row = {'PRODUCT NAME': 'TOTAL SALES'}
+    numeric_cols = result_ts_pw_value.select_dtypes(include=[np.number]).columns
+    
+    # Separate base columns from Gr/Ach columns
+    base_cols = [col for col in numeric_cols if not (col.startswith('Gr-') or col.startswith('Ach-'))]
+    gr_cols = [col for col in numeric_cols if col.startswith('Gr-')]
+    ach_cols = [col for col in numeric_cols if col.startswith('Ach-')]
+    
+    current_fy = fiscal_info['fiscal_year_str']
+    last_fy = fiscal_info['last_fiscal_year_str']
+    
+    # Sum base columns only
+    for col in base_cols:
+        total_value = valid_products[col].sum()
+        total_row[col] = round(total_value, 2)
+        current_app.logger.info(f"TS-PW Value Base total calculated for {col}: {total_value:.2f}")
+    
+    # Calculate Gr columns using formulas
+    for gr_col in gr_cols:
+        if 'YTD' in gr_col:
+            # YTD Growth columns
+            ytd_part = gr_col.replace('Gr-YTD-', '').replace(f'{current_fy} ', '')
+            ly_col = f'YTD-{last_fy} {ytd_part}LY'
+            act_col = f'Act-YTD-{current_fy} {ytd_part}'
+        else:
+            # Monthly Growth columns
+            month_year = gr_col.replace('Gr-', '')
+            month, year = month_year.split('-')
+            
+            if month in ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
+                ly_year = str(fiscal_info['last_fiscal_year_start'])[-2:]
+            else:
+                ly_year = str(fiscal_info['last_fiscal_year_end'])[-2:]
+            
+            ly_col = f'LY-{month}-{ly_year}'
+            act_col = f'Act-{month}-{year}'
+        
+        if ly_col in total_row and act_col in total_row:
+            ly_total = total_row[ly_col]
+            act_total = total_row[act_col]
+            
+            if ly_total > 0.01:
+                total_row[gr_col] = round(((act_total - ly_total) / ly_total) * 100, 2)
+            else:
+                total_row[gr_col] = 0.0
+        else:
+            total_row[gr_col] = 0.0
+    
+    # Calculate Ach columns using formulas
+    for ach_col in ach_cols:
+        if 'YTD' in ach_col:
+            # YTD Achievement columns
+            ytd_part = ach_col.replace('Ach-YTD-', '').replace(f'{current_fy} ', '')
+            
+            if '- (Apr to Mar)' in ach_col:
+                budget_col = f'YTD-{current_fy} - (Apr to Mar) Budget'
+                act_col = f'Act-YTD-{current_fy} (Apr to Mar)'
+            else:
+                budget_col = f'YTD-{current_fy} {ytd_part}Budget'
+                act_col = f'Act-YTD-{current_fy} {ytd_part}'
+        else:
+            # Monthly Achievement columns
+            month_year = ach_col.replace('Ach-', '')
+            budget_col = f'Budget-{month_year}'
+            act_col = f'Act-{month_year}'
+        
+        if budget_col in total_row and act_col in total_row:
+            budget_total = total_row[budget_col]
+            act_total = total_row[act_col]
+            
+            if budget_total > 0.01:
+                total_row[ach_col] = round((act_total / budget_total) * 100, 2)
+            else:
+                total_row[ach_col] = 0.0
+        else:
+            total_row[ach_col] = 0.0
+    
+    return total_row
+
+def remove_specific_unwanted_columns_fixed(df, product_col_name):
+    """Remove Region column, budget range columns like Budget-April24dec-24, AND duplicate YTD Budget column"""
     
     # Start with all columns
     columns_to_keep = []
@@ -1047,6 +1105,11 @@ def remove_specific_unwanted_columns(df, product_col_name):
             current_app.logger.info(f"Removing budget range column: {col}")
             should_remove = True
         
+        # NEW: Remove duplicate YTD Budget column (without dash)
+        elif col.endswith('(Apr to Mar)Budget') and not '- (Apr to Mar) Budget' in col:
+            current_app.logger.info(f"Removing duplicate YTD Budget column: {col}")
+            should_remove = True
+        
         # Keep all other columns
         if not should_remove:
             columns_to_keep.append(col)
@@ -1060,10 +1123,9 @@ def remove_specific_unwanted_columns(df, product_col_name):
 
 # Main TS-PW Analysis Processing 
 
-
 @ts_pw_bp.route('/process-ts-pw', methods=['POST'])
 def process_ts_pw_analysis():
-    """Process TS-PW data analysis - UPDATED with flexible budget header reading"""
+    """Process TS-PW data analysis - UPDATED with flexible budget header reading and FIXED total calculations"""
     try:
         data = request.json
         budget_filepath = data.get('budget_filepath')
@@ -1083,7 +1145,7 @@ def process_ts_pw_analysis():
         fiscal_info = ts_pw_merge_processor.fiscal_info
         months = ts_pw_merge_processor.months
         
-        # *** UPDATED: Use flexible header reading for budget data ***
+        # UPDATED: Use flexible header reading for budget data
         df_budget, read_error = read_budget_with_flexible_headers_tspw(budget_filepath, budget_sheet)
         if df_budget is None:
             return jsonify({
@@ -1207,7 +1269,7 @@ def process_ts_pw_analysis():
                     current_app.logger.warning(f"Error processing sales sheet {sheet_name}: {str(e)}")
                     continue
         
-        # ========== IMPROVED LAST YEAR DATA PROCESSING LOGIC ==========        
+        # IMPROVED LAST YEAR DATA PROCESSING LOGIC
         actual_mt_last = {}
         actual_value_last = {}
         ly_processing_method = "none"
@@ -1438,7 +1500,7 @@ def process_ts_pw_analysis():
         total_ly_value_records = sum(len(data) for data in actual_value_last.values())
         current_app.logger.info(f"Final LY processing result: Method={ly_processing_method}, MT records={total_ly_mt_records}, Value records={total_ly_value_records}")
         
-        # ========== CONTINUE WITH ORIGINAL PROCESSING LOGIC ==========
+        # CONTINUE WITH ORIGINAL PROCESSING LOGIC
         
         # Process MT (Tonnage) data
         mt_cols = [col for col in budget_data.columns if col.endswith('_MT')]
@@ -1494,18 +1556,9 @@ def process_ts_pw_analysis():
             # Build EXACT column structure and calculate values
             result_ts_pw_mt = build_exact_columns_and_calculate_values(result_ts_pw_mt, fiscal_info, 'mt')
             
-            # Calculate totals - SUM ALL COLUMNS INCLUDING Gr and Ach
+            # FIXED: Calculate totals with proper Gr/Ach formulas
             exclude_products = ['NORTH TOTAL', 'WEST SALES', 'GRAND TOTAL', 'TOTAL SALES']
-            valid_products = result_ts_pw_mt[~result_ts_pw_mt['PRODUCT NAME'].isin(exclude_products)]
-            
-            total_row = {'PRODUCT NAME': 'TOTAL SALES'}
-            numeric_cols = result_ts_pw_mt.select_dtypes(include=[np.number]).columns
-            
-            # Sum ALL numeric columns - no exceptions for Gr and Ach
-            for col in numeric_cols:
-                total_value = valid_products[col].sum()
-                total_row[col] = round(total_value, 2)
-                current_app.logger.info(f"TS-PW MT Total calculated for {col}: {total_value:.2f}")
+            total_row = calculate_mt_totals_fixed(result_ts_pw_mt, fiscal_info, exclude_products)
             
             result_ts_pw_mt = pd.concat([result_ts_pw_mt, pd.DataFrame([total_row])], ignore_index=True)
             result_ts_pw_mt = result_ts_pw_mt.rename(columns={'PRODUCT NAME': 'SALES in Tonage'})
@@ -1573,17 +1626,9 @@ def process_ts_pw_analysis():
             # Build EXACT column structure and calculate values
             result_ts_pw_value = build_exact_columns_and_calculate_values(result_ts_pw_value, fiscal_info, 'value')
             
-            # Calculate totals - SUM ALL COLUMNS INCLUDING Gr and Ach
-            valid_products = result_ts_pw_value[~result_ts_pw_value['PRODUCT NAME'].isin(exclude_products)]
-            
-            total_row = {'PRODUCT NAME': 'TOTAL SALES'}
-            numeric_cols = result_ts_pw_value.select_dtypes(include=[np.number]).columns
-            
-            # Sum ALL numeric columns - no exceptions for Gr and Ach
-            for col in numeric_cols:
-                total_value = valid_products[col].sum()
-                total_row[col] = round(total_value, 2)
-                current_app.logger.info(f"TS-PW Value Total calculated for {col}: {total_value:.2f}")
+            # FIXED: Calculate totals with proper Gr/Ach formulas
+            exclude_products = ['NORTH TOTAL', 'WEST SALES', 'GRAND TOTAL', 'TOTAL SALES']
+            total_row = calculate_value_totals_fixed(result_ts_pw_value, fiscal_info, exclude_products)
             
             result_ts_pw_value = pd.concat([result_ts_pw_value, pd.DataFrame([total_row])], ignore_index=True)
             result_ts_pw_value = result_ts_pw_value.rename(columns={'PRODUCT NAME': 'SALES in Value'})
@@ -1632,6 +1677,12 @@ def process_ts_pw_analysis():
                     'flexible_header_reading': True,
                     'header_detection': 'Automatic (row 0 or row 1)',
                     'validation_performed': True
+                },
+                'totals_calculation_method': {
+                    'base_columns': 'Sum of individual product values',
+                    'growth_columns': 'Formula: ((Total_Actual - Total_LY) / Total_LY) * 100',
+                    'achievement_columns': 'Formula: (Total_Actual / Total_Budget) * 100',
+                    'fixed_total_sales_row': True
                 }
             }
         })
@@ -1642,47 +1693,6 @@ def process_ts_pw_analysis():
             'success': False,
             'error': str(e)
         }), 500
-
-def remove_specific_unwanted_columns_fixed(df, product_col_name):
-    """Remove Region column, budget range columns like Budget-April24dec-24, AND duplicate YTD Budget column"""
-    
-    # Start with all columns
-    columns_to_keep = []
-    
-    for col in df.columns:
-        col_lower = str(col).lower().strip()
-        should_remove = False
-        
-        # Remove Region column
-        if col_lower == 'region':
-            current_app.logger.info(f"Removing Region column: {col}")
-            should_remove = True
-        
-        # Remove budget range columns like "Budget-April24dec-24"
-        elif re.search(r'budget.*april.*dec', col_lower, re.IGNORECASE):
-            current_app.logger.info(f"Removing budget range column: {col}")
-            should_remove = True
-        
-        # Remove any column with format like "Budget-[Month][Year][Month]-[Year]"
-        elif re.search(r'budget.*\w{3,}\d{2}.*\w{3,}.*\d{2}', col_lower, re.IGNORECASE):
-            current_app.logger.info(f"Removing budget range column: {col}")
-            should_remove = True
-        
-        # ✅ NEW: Remove duplicate YTD Budget column (without dash)
-        elif col.endswith('(Apr to Mar)Budget') and not '- (Apr to Mar) Budget' in col:
-            current_app.logger.info(f"Removing duplicate YTD Budget column: {col}")
-            should_remove = True
-        
-        # Keep all other columns
-        if not should_remove:
-            columns_to_keep.append(col)
-    
-    # Return filtered dataframe
-    filtered_df = df[columns_to_keep].copy()
-    current_app.logger.info(f"Removed {len(df.columns) - len(filtered_df.columns)} unwanted columns")
-    current_app.logger.info(f"Columns removed: {set(df.columns) - set(filtered_df.columns)}")
-    
-    return filtered_df
 
 @ts_pw_bp.route('/export-ts-pw-excel', methods=['POST'])
 def export_ts_pw_excel():
@@ -1737,32 +1747,26 @@ def export_ts_pw_excel():
             # Data formats with color coding
             budget_format = workbook.add_format({
                 'num_format': '#,##0.00', 'border': 1, 'align': 'right',
-                
             })
             
             ly_format = workbook.add_format({
                 'num_format': '#,##0.00', 'border': 1, 'align': 'right',
-                  
             })
             
             actual_format = workbook.add_format({
                 'num_format': '#,##0.00', 'border': 1, 'align': 'right',
-            
             })
             
             growth_format = workbook.add_format({
                 'num_format': '0.00', 'border': 1, 'align': 'right',
-        
             })
             
             achievement_format = workbook.add_format({
                 'num_format': '0.00', 'border': 1, 'align': 'right',
-                
             })
             
             ytd_format = workbook.add_format({
                 'num_format': '#,##0.00', 'border': 1, 'align': 'right',
-                
             })
             
             # Total row format - enhanced
@@ -1846,7 +1850,8 @@ def export_ts_pw_excel():
                 f"Fiscal Year: {fiscal_year}",
                 f"Data Type: {'Tonnage (MT)' if data_type == 'mt' else 'Value (Rs)'}",
                 f"Total Records: {len(df)}",
-                f"Region: NORTH"
+                f"Region: NORTH",
+                f"Total Sales Row: Gr/Ach calculated using formulas"
             ]
             
             for i, info_line in enumerate(footer_info):
@@ -2013,7 +2018,8 @@ def export_merged_excel():
                 f"Type: Merged TS-PW with Auditor Format",
                 f"Data Type: {'Tonnage' if data_type == 'mt' else 'Value'}",
                 f"Records: {len(df)}",
-                f"Fiscal Year: {fiscal_year}"
+                f"Fiscal Year: {fiscal_year}",
+                f"Total Sales Row: Gr/Ach calculated using formulas"
             ]
             
             for i, info in enumerate(footer_info):
@@ -2038,7 +2044,6 @@ def export_merged_excel():
             'success': False,
             'error': str(e)
         }), 500
-
 
 @ts_pw_bp.route('/export-combined-ts-pw-excel', methods=['POST'])
 def export_combined_ts_pw_excel():
@@ -2235,7 +2240,8 @@ def export_combined_ts_pw_excel():
                 f"Value Records: {len(value_data)}",
                 f"Region: NORTH",
                 f"Analysis Type: Combined TS-PW",
-                f"Budget Header Detection: Flexible (row 0 or row 1)"
+                f"Budget Header Detection: Flexible (row 0 or row 1)",
+                f"Total Sales Row: Gr/Ach calculated using formulas"
             ]
             
             for i, info_line in enumerate(footer_info):
@@ -2260,7 +2266,8 @@ def export_combined_ts_pw_excel():
                 'mt_records': len(mt_data) if mt_data else 0,
                 'value_records': len(value_data) if value_data else 0,
                 'enhanced_formatting': True,
-                'budget_header_detection': True
+                'budget_header_detection': True,
+                'fixed_total_sales_calculations': True
             }
         })
     
@@ -2270,5 +2277,3 @@ def export_combined_ts_pw_excel():
             'success': False,
             'error': str(e)
         }), 500
-
-
