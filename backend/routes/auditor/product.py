@@ -1349,8 +1349,9 @@ def apply_exact_fiscal_year_column_ordering(df, product_col_name):
     """Apply exact fiscal year column ordering to any dataframe"""
     return merge_processor.reorder_columns_exact_fiscal_year(df, product_col_name)
 
+# Updated build_mt_analysis function with correct total row calculations for Gr and Ach
 def build_mt_analysis(budget_data, all_products, actual_mt_data, fiscal_info, months):
-    """Build MT (tonnage) analysis with EXACT column ordering and FIXED total calculation"""
+    """Build MT (tonnage) analysis with EXACT column ordering and CORRECT total calculation (sum base columns, calculate Gr/Ach from totals)"""
     try:
         mt_cols = [col for col in budget_data.columns if col.endswith('_MT') and not col.endswith('LY_MT')]
         if not mt_cols:
@@ -1382,26 +1383,124 @@ def build_mt_analysis(budget_data, all_products, actual_mt_data, fiscal_info, mo
                     result_product_mt[col] = 0.0
                 result_product_mt.loc[idx, col] = value
 
-        # Build EXACT column structure and calculate values
+        # Build EXACT column structure and calculate values (for individual products)
         result_product_mt = build_exact_columns_and_calculate_values(result_product_mt, fiscal_info, 'mt')
 
-        # FIXED: Calculate totals including ALL columns (Budget, LY, Act, Gr, Ach)
+        # Calculate totals CORRECTLY: Sum base columns (Budget, LY, Act), then calculate Gr and Ach from summed totals
         exclude_products = ['NORTH TOTAL', 'WEST SALES', 'GRAND TOTAL', 'TOTAL SALES']
         mask = ~result_product_mt['PRODUCT NAME'].isin(exclude_products)
         valid_products = result_product_mt[mask]
         
         numeric_cols = result_product_mt.select_dtypes(include=[np.number]).columns
-        total_row = pd.DataFrame({'PRODUCT NAME': ['TOTAL SALES']})
         
-        # FIXED: Include ALL numeric columns including Gr and Ach
-        for col in numeric_cols:
-            if col in valid_products.columns:
-                # Calculate sum for ALL columns - no exclusion for Gr and Ach
-                total_row[col] = [valid_products[col].sum(skipna=True).round(2)]
-            else:
-                total_row[col] = [0.0]
-
+        # Base columns are those NOT starting with 'Gr-' or 'Ach-'
+        base_cols = [col for col in numeric_cols if not (col.startswith('Gr-') or col.startswith('Ach-'))]
+        
+        # Initialize total row with all columns
+        total_row = pd.DataFrame(columns=result_product_mt.columns)
+        total_row.loc[0, 'PRODUCT NAME'] = 'TOTAL SALES'
+        
+        # Sum the base columns (Budget, LY, Act, including YTD base)
+        for col in base_cols:
+            total_row.loc[0, col] = valid_products[col].sum(skipna=True).round(2)
+        
+        # Initialize Gr and Ach to 0 (will calculate below)
+        gr_ach_cols = [col for col in numeric_cols if col.startswith('Gr-') or col.startswith('Ach-')]
+        for col in gr_ach_cols:
+            total_row.loc[0, col] = 0.0
+        
+        # Concat to the dataframe
         result_product_mt = pd.concat([valid_products, total_row], ignore_index=True)
+        
+        # Now calculate Gr and Ach for the total row using summed values
+        total_index = result_product_mt[result_product_mt['PRODUCT NAME'] == 'TOTAL SALES'].index[0]
+        
+        current_fy = fiscal_info['fiscal_year_str']
+        last_fy = fiscal_info['last_fiscal_year_str']
+        current_start_year = str(fiscal_info['fiscal_year_start'])[-2:]
+        current_end_year = str(fiscal_info['fiscal_year_end'])[-2:]
+        last_start_year = str(fiscal_info['last_fiscal_year_start'])[-2:]
+        last_end_year = str(fiscal_info['last_fiscal_year_end'])[-2:]
+        
+        # 1. Calculate for monthly Gr and Ach
+        for month in months:
+            if month in ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
+                current_year = current_start_year
+                last_year = last_start_year
+            else:
+                current_year = current_end_year
+                last_year = last_end_year
+            
+            budget_col = f'Budget-{month}-{current_year}'
+            ly_col = f'LY-{month}-{last_year}'
+            act_col = f'Act-{month}-{current_year}'
+            gr_col = f'Gr-{month}-{current_year}'
+            ach_col = f'Ach-{month}-{current_year}'
+            
+            if act_col not in result_product_mt.columns:
+                continue
+            
+            act_value = result_product_mt.loc[total_index, act_col]
+            
+            if act_value > 0.01:
+                # Growth
+                if ly_col in result_product_mt.columns:
+                    ly_value = result_product_mt.loc[total_index, ly_col]
+                    if ly_value > 0.01:
+                        result_product_mt.loc[total_index, gr_col] = round(((act_value - ly_value) / ly_value) * 100, 2)
+                    else:
+                        result_product_mt.loc[total_index, gr_col] = 0.0
+                
+                # Achievement
+                if budget_col in result_product_mt.columns:
+                    budget_value = result_product_mt.loc[total_index, budget_col]
+                    if budget_value > 0.01:
+                        result_product_mt.loc[total_index, ach_col] = round((act_value / budget_value) * 100, 2)
+                    else:
+                        result_product_mt.loc[total_index, ach_col] = 0.0
+            else:
+                result_product_mt.loc[total_index, gr_col] = 0.0
+                result_product_mt.loc[total_index, ach_col] = 0.0
+        
+        # 2. Calculate for YTD Gr and Ach
+        ytd_pairs = [
+            ('Apr to Jun', f'YTD-{current_fy} (Apr to Jun)Budget', 
+             f'YTD-{last_fy} (Apr to Jun)LY', f'Act-YTD-{current_fy} (Apr to Jun)'),
+            ('Apr to Sep', f'YTD-{current_fy} (Apr to Sep)Budget', 
+             f'YTD-{last_fy} (Apr to Sep)LY', f'Act-YTD-{current_fy} (Apr to Sep)'),
+            ('Apr to Dec', f'YTD-{current_fy} (Apr to Dec)Budget', 
+             f'YTD-{last_fy} (Apr to Dec)LY', f'Act-YTD-{current_fy} (Apr to Dec)'),
+            ('Apr to Mar', f'YTD-{current_fy} (Apr to Mar) Budget', 
+             f'YTD-{last_fy} (Apr to Mar)LY', f'Act-YTD-{current_fy} (Apr to Mar)')
+        ]
+        
+        for period, budget_col, ly_col, act_col in ytd_pairs:
+            if act_col not in result_product_mt.columns:
+                continue
+            
+            act_value = result_product_mt.loc[total_index, act_col]
+            gr_col = f'Gr-YTD-{current_fy} ({period})'
+            ach_col = f'Ach-YTD-{current_fy} ({period})'
+            
+            if act_value > 0.01:
+                # Growth
+                if ly_col in result_product_mt.columns:
+                    ly_value = result_product_mt.loc[total_index, ly_col]
+                    if ly_value > 0.01:
+                        result_product_mt.loc[total_index, gr_col] = round(((act_value - ly_value) / ly_value) * 100, 2)
+                    else:
+                        result_product_mt.loc[total_index, gr_col] = 0.0
+                
+                # Achievement
+                if budget_col in result_product_mt.columns:
+                    budget_value = result_product_mt.loc[total_index, budget_col]
+                    if budget_value > 0.01:
+                        result_product_mt.loc[total_index, ach_col] = round((act_value / budget_value) * 100, 2)
+                    else:
+                        result_product_mt.loc[total_index, ach_col] = 0.0
+            else:
+                result_product_mt.loc[total_index, gr_col] = 0.0
+                result_product_mt.loc[total_index, ach_col] = 0.0
         
         # Rename to match specification
         result_product_mt = result_product_mt.rename(columns={'PRODUCT NAME': 'SALES in Tonage'})
@@ -1426,7 +1525,7 @@ def build_mt_analysis(budget_data, all_products, actual_mt_data, fiscal_info, mo
         return jsonify({'success': False, 'error': f'MT analysis error: {str(e)}'})
 
 def build_value_analysis(budget_data, all_products, actual_value_data, fiscal_info, months):
-    """Build Value analysis with EXACT column ordering and FIXED total calculation"""
+    """Build Value analysis with EXACT column ordering and CORRECT total calculation (sum base columns, calculate Gr/Ach from totals)"""
     try:
         value_cols = [col for col in budget_data.columns if col.endswith('_Value') and not col.endswith('LY_Value')]
         if not value_cols:
@@ -1458,26 +1557,124 @@ def build_value_analysis(budget_data, all_products, actual_value_data, fiscal_in
                     result_product_value[col] = 0.0
                 result_product_value.loc[idx, col] = value
 
-        # Build EXACT column structure and calculate values
+        # Build EXACT column structure and calculate values (for individual products)
         result_product_value = build_exact_columns_and_calculate_values(result_product_value, fiscal_info, 'value')
 
-        # FIXED: Calculate totals including ALL columns (Budget, LY, Act, Gr, Ach)
+        # Calculate totals CORRECTLY: Sum base columns (Budget, LY, Act), then calculate Gr and Ach from summed totals
         exclude_products = ['NORTH TOTAL', 'WEST SALES', 'GRAND TOTAL', 'TOTAL SALES']
         mask = ~result_product_value['PRODUCT NAME'].isin(exclude_products)
         valid_products = result_product_value[mask]
         
         numeric_cols = result_product_value.select_dtypes(include=[np.number]).columns
-        total_row = pd.DataFrame({'PRODUCT NAME': ['TOTAL SALES']})
         
-        # FIXED: Include ALL numeric columns including Gr and Ach
-        for col in numeric_cols:
-            if col in valid_products.columns:
-                # Calculate sum for ALL columns - no exclusion for Gr and Ach
-                total_row[col] = [valid_products[col].sum(skipna=True).round(2)]
-            else:
-                total_row[col] = [0.0]
-
+        # Base columns are those NOT starting with 'Gr-' or 'Ach-'
+        base_cols = [col for col in numeric_cols if not (col.startswith('Gr-') or col.startswith('Ach-'))]
+        
+        # Initialize total row with all columns
+        total_row = pd.DataFrame(columns=result_product_value.columns)
+        total_row.loc[0, 'PRODUCT NAME'] = 'TOTAL SALES'
+        
+        # Sum the base columns (Budget, LY, Act, including YTD base)
+        for col in base_cols:
+            total_row.loc[0, col] = valid_products[col].sum(skipna=True).round(2)
+        
+        # Initialize Gr and Ach to 0 (will calculate below)
+        gr_ach_cols = [col for col in numeric_cols if col.startswith('Gr-') or col.startswith('Ach-')]
+        for col in gr_ach_cols:
+            total_row.loc[0, col] = 0.0
+        
+        # Concat to the dataframe
         result_product_value = pd.concat([valid_products, total_row], ignore_index=True)
+        
+        # Now calculate Gr and Ach for the total row using summed values
+        total_index = result_product_value[result_product_value['PRODUCT NAME'] == 'TOTAL SALES'].index[0]
+        
+        current_fy = fiscal_info['fiscal_year_str']
+        last_fy = fiscal_info['last_fiscal_year_str']
+        current_start_year = str(fiscal_info['fiscal_year_start'])[-2:]
+        current_end_year = str(fiscal_info['fiscal_year_end'])[-2:]
+        last_start_year = str(fiscal_info['last_fiscal_year_start'])[-2:]
+        last_end_year = str(fiscal_info['last_fiscal_year_end'])[-2:]
+        
+        # 1. Calculate for monthly Gr and Ach
+        for month in months:
+            if month in ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
+                current_year = current_start_year
+                last_year = last_start_year
+            else:
+                current_year = current_end_year
+                last_year = last_end_year
+            
+            budget_col = f'Budget-{month}-{current_year}'
+            ly_col = f'LY-{month}-{last_year}'
+            act_col = f'Act-{month}-{current_year}'
+            gr_col = f'Gr-{month}-{current_year}'
+            ach_col = f'Ach-{month}-{current_year}'
+            
+            if act_col not in result_product_value.columns:
+                continue
+            
+            act_value = result_product_value.loc[total_index, act_col]
+            
+            if act_value > 0.01:
+                # Growth
+                if ly_col in result_product_value.columns:
+                    ly_value = result_product_value.loc[total_index, ly_col]
+                    if ly_value > 0.01:
+                        result_product_value.loc[total_index, gr_col] = round(((act_value - ly_value) / ly_value) * 100, 2)
+                    else:
+                        result_product_value.loc[total_index, gr_col] = 0.0
+                
+                # Achievement
+                if budget_col in result_product_value.columns:
+                    budget_value = result_product_value.loc[total_index, budget_col]
+                    if budget_value > 0.01:
+                        result_product_value.loc[total_index, ach_col] = round((act_value / budget_value) * 100, 2)
+                    else:
+                        result_product_value.loc[total_index, ach_col] = 0.0
+            else:
+                result_product_value.loc[total_index, gr_col] = 0.0
+                result_product_value.loc[total_index, ach_col] = 0.0
+        
+        # 2. Calculate for YTD Gr and Ach
+        ytd_pairs = [
+            ('Apr to Jun', f'YTD-{current_fy} (Apr to Jun)Budget', 
+             f'YTD-{last_fy} (Apr to Jun)LY', f'Act-YTD-{current_fy} (Apr to Jun)'),
+            ('Apr to Sep', f'YTD-{current_fy} (Apr to Sep)Budget', 
+             f'YTD-{last_fy} (Apr to Sep)LY', f'Act-YTD-{current_fy} (Apr to Sep)'),
+            ('Apr to Dec', f'YTD-{current_fy} (Apr to Dec)Budget', 
+             f'YTD-{last_fy} (Apr to Dec)LY', f'Act-YTD-{current_fy} (Apr to Dec)'),
+            ('Apr to Mar', f'YTD-{current_fy} (Apr to Mar) Budget', 
+             f'YTD-{last_fy} (Apr to Mar)LY', f'Act-YTD-{current_fy} (Apr to Mar)')
+        ]
+        
+        for period, budget_col, ly_col, act_col in ytd_pairs:
+            if act_col not in result_product_value.columns:
+                continue
+            
+            act_value = result_product_value.loc[total_index, act_col]
+            gr_col = f'Gr-YTD-{current_fy} ({period})'
+            ach_col = f'Ach-YTD-{current_fy} ({period})'
+            
+            if act_value > 0.01:
+                # Growth
+                if ly_col in result_product_value.columns:
+                    ly_value = result_product_value.loc[total_index, ly_col]
+                    if ly_value > 0.01:
+                        result_product_value.loc[total_index, gr_col] = round(((act_value - ly_value) / ly_value) * 100, 2)
+                    else:
+                        result_product_value.loc[total_index, gr_col] = 0.0
+                
+                # Achievement
+                if budget_col in result_product_value.columns:
+                    budget_value = result_product_value.loc[total_index, budget_col]
+                    if budget_value > 0.01:
+                        result_product_value.loc[total_index, ach_col] = round((act_value / budget_value) * 100, 2)
+                    else:
+                        result_product_value.loc[total_index, ach_col] = 0.0
+            else:
+                result_product_value.loc[total_index, gr_col] = 0.0
+                result_product_value.loc[total_index, ach_col] = 0.0
         
         # Rename to match specification  
         result_product_value = result_product_value.rename(columns={'PRODUCT NAME': 'SALES in Value'})
@@ -1500,7 +1697,6 @@ def build_value_analysis(budget_data, all_products, actual_value_data, fiscal_in
     except Exception as e:
         current_app.logger.error(f"Error in Value analysis: {str(e)}")
         return jsonify({'success': False, 'error': f'Value analysis error: {str(e)}'})
-
 
 def build_merge_analysis(budget_data, all_products, actual_mt_data, actual_value_data, fiscal_info, months):
     """Build merged analysis with both MT and Value data combined"""
