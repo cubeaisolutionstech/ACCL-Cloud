@@ -1900,11 +1900,11 @@ def export_merged_excel():
         if data_type == 'mt':
             sheet_name = 'Merged_TS_PW_MT_Analysis'
             filename = f"merged_ts_pw_auditor_tonage_north_{fiscal_year}.xlsx"
-            table_title = f"Merged TS-PW Auditor Tonnage Analysis (NORTH) [FY {fiscal_year}]"
+            table_title = f"Merged TS-PW Auditor Tonage Analysis (NORTH) [F {fiscal_year}]"
         else:
             sheet_name = 'Merged_TS_PW_Value_Analysis'
             filename = f"merged_ts_pw_auditor_value_north_{fiscal_year}.xlsx"
-            table_title = f"Merged TS-PW Auditor Value Analysis (NORTH) [FY {fiscal_year}]"
+            table_title = f"Merged TS-PW Auditor Value Analysis (NORTH) [{fiscal_year}]"
         
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -2062,8 +2062,8 @@ def export_combined_ts_pw_excel():
                 'error': 'No data provided for export'
             }), 400
         
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"ts_pw_combined_analysis_north_{fiscal_year}_{timestamp}.xlsx"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        filename = f"ts_pw_report{fiscal_year}_{timestamp}.xlsx"
         
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -2214,7 +2214,7 @@ def export_combined_ts_pw_excel():
             current_row = 0
             
             # Main title
-            main_title = f"TS-PW Combined Analysis Report - NORTH Region (FY {fiscal_year})"
+            main_title = f"TS-PW Combined Analysis Report - NORTH Region ( {fiscal_year})"
             max_cols = max(len(mt_columns) if mt_columns else 0, len(value_columns) if value_columns else 0)
             if max_cols > 1:
                 worksheet.merge_range(current_row, 0, current_row, max_cols - 1, main_title, formats['main_title'])
@@ -2222,13 +2222,13 @@ def export_combined_ts_pw_excel():
             
             # Write MT table
             if mt_data and mt_columns:
-                mt_title = f"TS-PW Monthly Budget and Actual Tonnage (NORTH) [FY {fiscal_year}]"
+                mt_title = f"TS-PW Monthly Budget and Actual Tonnage (NORTH) [ {fiscal_year}]"
                 current_row = write_table_data(worksheet, mt_data, mt_columns, current_row, mt_title, formats)
                 current_row += 3  # Add 3 rows spacing between tables
             
             # Write Value table
             if value_data and value_columns:
-                value_title = f"TS-PW Monthly Budget and Actual Value (NORTH) [FY {fiscal_year}]"
+                value_title = f"TS-PW Monthly Budget and Actual Value (NORTH) [ {fiscal_year}]"
                 current_row = write_table_data(worksheet, value_data, value_columns, current_row, value_title, formats)
             
             # Footer
