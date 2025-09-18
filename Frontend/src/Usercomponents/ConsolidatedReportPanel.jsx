@@ -9,11 +9,61 @@ const ConsolidatedReportPanel = () => {
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Define the proper order for report categories
+  const getCategoryOrder = (category) => {
+    const orderMap = {
+      // Budget reports (order: 1)
+      'budget_results': 1,
+      'branch_budget_results': 1,
+      
+      // OD Collection reports (order: 2)
+      'od_vs_results': 2,
+      'branch_od_vs_results': 2,
+      
+      // Product Growth reports (order: 3)
+      'product_results': 3,
+      'branch_product_results': 3,
+      'product_growth_results': 3,
+      
+      // Customer reports (order: 4)
+      'customers_results': 4,
+      'branch_nbc_results': 4,
+      
+      // OD Target reports (order: 5)
+      'od_results': 5,
+      'branch_od_results_current': 5,
+      'branch_od_results_previous': 5
+    };
+    
+    return orderMap[category] || 999; // Unknown categories go to the end
+  };
+
+  // Sort reports by category order
+  const sortReportsByCategory = (reports) => {
+    if (!Array.isArray(reports)) return [];
+    
+    return [...reports].sort((a, b) => {
+      const orderA = getCategoryOrder(a.category || 'unknown');
+      const orderB = getCategoryOrder(b.category || 'unknown');
+      
+      // Primary sort by category order
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      // Secondary sort by title for reports in the same category
+      const titleA = (a.title || '').toLowerCase();
+      const titleB = (b.title || '').toLowerCase();
+      return titleA.localeCompare(titleB);
+    });
+  };
+
   // Load reports on component mount and when refreshKey changes
   useEffect(() => {
     const loadReports = () => {
       const reports = getAllReportsForPPT();
-      setConsolidatedReports(reports || []);
+      const sortedReports = sortReportsByCategory(reports || []);
+      setConsolidatedReports(sortedReports);
     };
 
     loadReports();
@@ -143,8 +193,9 @@ const ConsolidatedReportPanel = () => {
       setDownloading(true);
       setError(null);
 
-      // Get all reports from consolidated storage
-      const allReportsFlattened = getAllReportsForPPT();
+      // Get all reports from consolidated storage and sort them
+      const allReports = getAllReportsForPPT();
+      const allReportsFlattened = sortReportsByCategory(allReports || []);
       
       if (!allReportsFlattened || allReportsFlattened.length === 0) {
         setError('No reports available for consolidated PPT generation');
@@ -153,13 +204,13 @@ const ConsolidatedReportPanel = () => {
 
       console.log(`📊 Generating consolidated PPT with ${allReportsFlattened.length} reports (Type: ${reportType})`);
       
-      // Log category breakdown
+      // Log category breakdown with proper order
       const categoryBreakdown = {};
       allReportsFlattened.forEach(report => {
         const category = report.category || 'unknown';
         categoryBreakdown[category] = (categoryBreakdown[category] || 0) + 1;
       });
-      console.log('📈 Report breakdown by category:', categoryBreakdown);
+      console.log('📈 Report breakdown by category (in proper order):', categoryBreakdown);
 
       // Transform data to backend format
       const reportsForBackend = allReportsFlattened.map(report => ({
@@ -174,7 +225,7 @@ const ConsolidatedReportPanel = () => {
       // Choose API endpoint based on report type
       if (reportType === 'branch') {
         // Use branch route for branch reports
-        response = await axios.post('/api/branch/generate_consolidated_branch_ppt', {
+        response = await axios.post('http://localhost:5000/api/branch/generate_consolidated_branch_ppt', {
           allDfsInfo: reportsForBackend, // Branch route expects 'allDfsInfo'
           reportTitle: reportTitle
         }, {
@@ -185,7 +236,7 @@ const ConsolidatedReportPanel = () => {
         });
       } else {
         // Use executive route for executive reports
-        response = await axios.post('/api/executive/generate_consolidated_ppt', {
+        response = await axios.post('http://localhost:5000/api/executive/generate_consolidated_ppt', {
           reports_data: reportsForBackend, // Executive route expects 'reports_data'
           title: reportTitle,
           logo_file: null
@@ -262,7 +313,7 @@ const ConsolidatedReportPanel = () => {
       
       // Debug: Log all categories found
       const allCategories = consolidatedReports.map(report => report.category || 'unknown');
-      console.log('📊 All report categories:', allCategories);
+      console.log('📊 All report categories (in proper order):', allCategories);
       console.log('🔢 Report counts:', counts);
     }
     return counts;
@@ -304,7 +355,7 @@ const ConsolidatedReportPanel = () => {
             </div>
           </div>
 
-          {/* Report Counts - Compact Grid */}
+          {/* Report Counts - Proper Order: Budget → OD Collection → Product → Customer → OD Target */}
           <div className="grid grid-cols-5 gap-2 mb-4 text-xs">
             <div className="text-center p-2 bg-blue-50 rounded">
               <div className="font-medium text-blue-700">{counts.budget}</div>
@@ -316,7 +367,7 @@ const ConsolidatedReportPanel = () => {
             </div>
             <div className="text-center p-2 bg-green-50 rounded">
               <div className="font-medium text-green-700">{counts.product}</div>
-              <div className="text-green-600">Product</div>
+              <div className="text-green-600">Product Growth</div>
             </div>
             <div className="text-center p-2 bg-orange-50 rounded">
               <div className="font-medium text-orange-700">{counts.customer}</div>
