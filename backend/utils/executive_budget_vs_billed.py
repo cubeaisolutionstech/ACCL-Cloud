@@ -21,7 +21,7 @@ def calculate_executive_budget_vs_billed(
     """
     Calculate executive budget vs billed analysis following the exact Streamlit logic
     Modified to include all executives in overall sales even without budget data
-    Tables will be displayed in alphabetic order
+    Tables will be displayed in alphabetic order with consistent 2-decimal formatting
     """
     try:
         print("Starting executive budget vs billed calculation...")
@@ -335,11 +335,13 @@ def calculate_executive_budget_vs_billed(
         })
         overall_sales_value_df = pd.concat([overall_sales_value_df, total_row_overall_value], ignore_index=True)
         
-        # Round all numeric columns
+        # Format all numeric columns to exactly 2 decimal places
         for df in [budget_vs_billed_qty_df, budget_vs_billed_value_df, overall_sales_qty_df, overall_sales_value_df]:
             if not df.empty:
                 numeric_cols = df.select_dtypes(include=[np.number]).columns
-                df[numeric_cols] = df[numeric_cols].round(2)
+                for col in numeric_cols:
+                    # Format to exactly 2 decimal places
+                    df[col] = df[col].round(2).apply(lambda x: f"{x:.2f}")
         
         print("Executive budget vs billed calculation completed successfully")
         print(f"Executives with budget data: {len(executives_with_budget)}")
