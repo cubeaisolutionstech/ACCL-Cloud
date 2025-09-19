@@ -192,15 +192,15 @@ def generate_customer_ppt():
         # Get optional parameters
         title = data.get('title', 'Customer Analysis Report')
 
-        # 🔥 Load static logo
+        # Load static logo
         import os
         logo_file = None
         static_logo_path = os.path.join("static", "logo.jpeg")
         if os.path.exists(static_logo_path):
             logo_file = open(static_logo_path, "rb")
-            logger.info(f"✅ Static logo loaded for Customer PPT from: {static_logo_path}")
+            logger.info(f"Static logo loaded for Customer PPT from: {static_logo_path}")
         else:
-            logger.warning("⚠️ Static logo not found, continuing without logo.")
+            logger.warning("Static logo not found, continuing without logo.")
 
         logger.info(f"Generating Customer PPT: {title}")
 
@@ -228,7 +228,7 @@ def generate_customer_ppt():
                 ppt_buffers.append((fin_year, ppt_buffer))
 
         if logo_file:
-            logo_file.close()  # 🧼 Clean up
+            logo_file.close()  # Clean up
 
         if not ppt_buffers:
             return jsonify({'error': 'Failed to generate PowerPoint presentation'}), 500
@@ -240,7 +240,7 @@ def generate_customer_ppt():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"Customer_Analysis_{timestamp}.pptx"
 
-        logger.info(f"✅ Successfully generated Customer PPT: {filename}")
+        logger.info(f"Successfully generated Customer PPT: {filename}")
 
         return send_file(
             final_buffer,
@@ -390,15 +390,15 @@ def generate_od_target_ppt():
         # Get optional parameters
         title = data.get('title', 'OD Target Report')
 
-        # 🔥 Load static logo
+        # Load static logo
         import os
         logo_file = None
         static_logo_path = os.path.join("static", "logo.jpeg")
         if os.path.exists(static_logo_path):
             logo_file = open(static_logo_path, "rb")
-            logger.info(f"✅ Static logo loaded for OD Target PPT from: {static_logo_path}")
+            logger.info(f"Static logo loaded for OD Target PPT from: {static_logo_path}")
         else:
-            logger.warning("⚠️ Static logo not found. Proceeding without logo.")
+            logger.warning("Static logo not found. Proceeding without logo.")
 
         logger.info(f"Generating OD Target PPT: {title}")
 
@@ -422,7 +422,7 @@ def generate_od_target_ppt():
         )
 
         if logo_file:
-            logo_file.close()  # 🧼 Always clean up
+            logo_file.close()  # Always clean up
 
         if not ppt_buffer:
             return jsonify({'error': 'Failed to generate PowerPoint presentation'}), 500
@@ -431,7 +431,7 @@ def generate_od_target_ppt():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"OD_Target_Analysis_{timestamp}.pptx"
 
-        logger.info(f"✅ Successfully generated OD Target PPT: {filename}")
+        logger.info(f"Successfully generated OD Target PPT: {filename}")
 
         return send_file(
             ppt_buffer,
@@ -689,7 +689,7 @@ def generate_product_growth_ppt():
     try:
         data = request.get_json()
         logger.info(f"Received Product Growth PPT generation request with keys: {list(data.keys())}")
-        logger.info(f"🔍 Full request data: {data}")
+        logger.info(f"Full request data: {data}")
 
         # Handle different data formats
         streamlit_result = data.get('streamlit_result')
@@ -713,7 +713,7 @@ def generate_product_growth_ppt():
             logger.error("Group results is empty after processing")
             return jsonify({'error': 'No valid data found for PPT generation'}), 400
 
-        # 🔒 Extract month info
+        # Extract month info
         ly_month = data.get('ly_month')
         cy_month = data.get('cy_month')
         month_title = data.get('month_title')
@@ -734,31 +734,31 @@ def generate_product_growth_ppt():
                     cy_month = cy_month or nested_data.get('cy_month')
                     month_title = month_title or nested_data.get('month_title')
 
-        logger.info(f"🔍 Extracted ly_month: '{ly_month}'")
-        logger.info(f"🔍 Extracted cy_month: '{cy_month}'")
-        logger.info(f"🔍 Extracted month_title: '{month_title}'")
-        print(f"🔍 DEBUG MONTHS: ly_month={ly_month}, cy_month={cy_month}, month_title={month_title}")
+        logger.info(f"Extracted ly_month: '{ly_month}'")
+        logger.info(f"Extracted cy_month: '{cy_month}'")
+        logger.info(f"Extracted month_title: '{month_title}'")
+        print(f"DEBUG MONTHS: ly_month={ly_month}, cy_month={cy_month}, month_title={month_title}")
 
         # Final title logic
         if ly_month and cy_month:
             final_month_title = f"LY: {ly_month} vs CY: {cy_month}"
-            logger.info(f"✅ Using extracted months for title: {final_month_title}")
+            logger.info(f"Using extracted months for title: {final_month_title}")
         elif month_title and month_title != "Product Growth Analysis":
             final_month_title = month_title
-            logger.info(f"✅ Using provided month_title: {final_month_title}")
+            logger.info(f"Using provided month_title: {final_month_title}")
         else:
             final_month_title = "Product Growth Analysis"
-            logger.info(f"✅ Using default title: {final_month_title}")
+            logger.info(f"Using default title: {final_month_title}")
 
-        # 🔥 Load static logo
+        # Load static logo
         import os
         logo_file = None
         static_logo_path = os.path.join("static", "logo.jpeg")
         if os.path.exists(static_logo_path):
             logo_file = open(static_logo_path, "rb")
-            logger.info(f"✅ Static logo loaded for Product Growth PPT from: {static_logo_path}")
+            logger.info(f"Static logo loaded for Product Growth PPT from: {static_logo_path}")
         else:
-            logger.warning("⚠️ Static logo not found, continuing without logo.")
+            logger.warning("Static logo not found, continuing without logo.")
 
         logger.info(f"Generating Product Growth PPT for: {final_month_title}")
         logger.info(f"Found data for {len(group_results)} companies: {list(group_results.keys())}")
@@ -1092,7 +1092,7 @@ def generate_proof_of_calculation():
             clean_month = month.replace(' ', '_').replace(',', '_').replace('/', '_').replace('\\', '_')
             filename = f"Executive_Budget_vs_Billed_Proof_{clean_month}_{timestamp}.xlsx"
             
-            logger.info(f"✅ Successfully generated proof of calculation: {filename}")
+            logger.info(f"Successfully generated proof of calculation: {filename}")
             
             return send_file(
                 excel_buffer,
@@ -1108,7 +1108,7 @@ def generate_proof_of_calculation():
         clean_month = month.replace(' ', '_').replace(',', '_').replace('/', '_').replace('\\', '_')
         filename = f"Executive_Budget_vs_Billed_Proof_{clean_month}_{timestamp}.xlsx"
         
-        logger.info(f"✅ Successfully generated proof of calculation (first of {len(excel_buffers)}): {filename}")
+        logger.info(f"Successfully generated proof of calculation (first of {len(excel_buffers)}): {filename}")
         
         return send_file(
             excel_buffer,
@@ -1125,7 +1125,7 @@ def generate_proof_of_calculation():
 
 @executive_bp.route('/calculate_budget_vs_billed', methods=['POST'])
 def calculate_budget_vs_billed():
-    """Calculate executive budget vs billed analysis"""
+    """Calculate executive budget vs billed analysis with consistent 2-decimal formatting"""
     try:
         data = request.get_json()
         logger.info(f"Received request data keys: {list(data.keys())}")
@@ -1183,7 +1183,7 @@ def calculate_budget_vs_billed():
             missing = [name for name, val in zip(['value', 'quantity', 'executive'], required_budget_cols) if not val]
             return jsonify({'error': f'Missing required budget column mappings: {missing}'}), 400
         
-        # Call calculation function
+        # Call calculation function (now with consistent 2-decimal formatting)
         result = calculate_executive_budget_vs_billed(
             sales_file_path=sales_file_path,
             budget_file_path=budget_file_path,
@@ -1206,6 +1206,7 @@ def calculate_budget_vs_billed():
         )
         
         if result.get('success'):
+            logger.info("Budget vs Billed calculation successful with consistent decimal formatting!")
             return jsonify(result)
         else:
             return jsonify({'error': result.get('error', 'Unknown error')}), 500
@@ -1310,7 +1311,7 @@ def get_available_months_route():
         logger.error(f"Error in get_available_months route: {str(e)}", exc_info=True)
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
-# ============= OD VS COLLECTION ROUTES (EXISTING) =============
+# ============= OD VS COLLECTION ROUTES (UPDATED) =============
 
 @executive_bp.route('/od_auto_map_columns', methods=['POST'])
 def od_auto_map_columns():
@@ -1515,7 +1516,7 @@ def od_get_available_months():
 
 @executive_bp.route('/calculate_od_vs_collection', methods=['POST'])
 def calculate_od_vs_collection():
-    """Calculate OD Target vs Collection analysis"""
+    """Calculate OD Target vs Collection analysis with consistent 2-decimal formatting"""
     try:
         data = request.get_json()
         logger.info(f"Received OD vs Collection request data keys: {list(data.keys())}")
@@ -1602,7 +1603,7 @@ def calculate_od_vs_collection():
         logger.info(f"OS Feb data loaded: {len(os_feb_df)} rows")
         logger.info(f"Sales data loaded: {len(sales_df)} rows")
         
-        # Call calculation function
+        # Call calculation function (now with consistent 2-decimal formatting)
         result = calculate_od_values(
             os_jan_df, os_feb_df, sales_df, selected_month,
             os_jan_due_date, os_jan_ref_date, os_jan_net_value, os_jan_executive, os_jan_sl_code, os_jan_area,
@@ -1612,6 +1613,7 @@ def calculate_od_vs_collection():
         )
         
         if result.get('success'):
+            logger.info("OD vs Collection calculation successful with consistent decimal formatting!")
             return jsonify(result)
         else:
             return jsonify({'error': result.get('error', 'Unknown error')}), 500
@@ -1637,15 +1639,15 @@ def generate_ppt():
         # Get optional parameters
         month_title = data.get('month_title', 'Executive Analysis')
 
-        # 🔥 Load static logo
+        # Load static logo
         import os
         logo_file = None
         static_logo_path = os.path.join("static", "logo.jpeg")
         if os.path.exists(static_logo_path):
             logo_file = open(static_logo_path, "rb")
-            logger.info(f"✅ Static logo loaded for Executive PPT from: {static_logo_path}")
+            logger.info(f"Static logo loaded for Executive PPT from: {static_logo_path}")
         else:
-            logger.warning("⚠️ Static logo not found, continuing without logo.")
+            logger.warning("Static logo not found, continuing without logo.")
 
         logger.info(f"Generating PPT for month: {month_title}")
 
@@ -1663,7 +1665,7 @@ def generate_ppt():
         )
 
         if logo_file:
-            logo_file.close()  # 🧼 Clean up
+            logo_file.close()  # Clean up
 
         if not ppt_buffer:
             return jsonify({'error': 'Failed to generate PowerPoint presentation'}), 500
@@ -1699,15 +1701,15 @@ def generate_od_ppt():
         # Get optional parameters
         month_title = data.get('month_title', 'OD Analysis')
 
-        # 🔥 Load static logo
+        # Load static logo
         import os
         logo_file = None
         static_logo_path = os.path.join("static", "logo.jpeg")
         if os.path.exists(static_logo_path):
             logo_file = open(static_logo_path, "rb")
-            logger.info(f"✅ Static logo loaded for OD PPT from: {static_logo_path}")
+            logger.info(f"Static logo loaded for OD PPT from: {static_logo_path}")
         else:
-            logger.warning("⚠️ Static logo not found, proceeding without logo.")
+            logger.warning("Static logo not found, proceeding without logo.")
 
         logger.info(f"Generating OD PPT for month: {month_title}")
 
@@ -1725,7 +1727,7 @@ def generate_od_ppt():
         )
 
         if logo_file:
-            logo_file.close()  # 🧼 Clean up file handle
+            logo_file.close()  # Clean up file handle
 
         if not ppt_buffer:
             return jsonify({'error': 'Failed to generate PowerPoint presentation'}), 500
@@ -1765,9 +1767,9 @@ def generate_consolidated_ppt():
 
             if columns:
                 df.attrs["columns"] = columns
-                logger.info(f"✅ Embedded column order for: {report.get('title')} → {columns}")
+                logger.info(f"Embedded column order for: {report.get('title')} → {columns}")
             else:
-                logger.warning(f"⚠️ No columns passed for: {report.get('title')}")
+                logger.warning(f"No columns passed for: {report.get('title')}")
 
             report["df"] = df
             report.pop("columns", None)
@@ -1777,9 +1779,9 @@ def generate_consolidated_ppt():
         static_logo_path = os.path.join("static", "logo.jpeg")  # or logo.jpg/jpeg
         if os.path.exists(static_logo_path):
             logo_file = open(static_logo_path, "rb")
-            logger.info(f"✅ Static logo loaded from: {static_logo_path}")
+            logger.info(f"Static logo loaded from: {static_logo_path}")
         else:
-            logger.warning("⚠️ Static logo not found. Proceeding without logo.")
+            logger.warning("Static logo not found. Proceeding without logo.")
 
         # 3. Generate PPT
         title = data.get('title', 'Consolidated Executive Report')
@@ -1790,7 +1792,7 @@ def generate_consolidated_ppt():
         )
 
         if logo_file:
-            logo_file.close()  # 🔐 Always close manually opened files
+            logo_file.close()  # Always close manually opened files
 
         if not ppt_buffer:
             return jsonify({'error': 'Failed to generate consolidated PowerPoint presentation'}), 500
@@ -1832,12 +1834,12 @@ def health_check():
             'product_get_options', 
             'calculate_product_growth',
             'generate_product_growth_ppt',
-            # Budget vs Billed Routes
+            # Budget vs Billed Routes (with consistent decimal formatting)
             'calculate_budget_vs_billed',
             'auto_map_columns',
             'get_exec_branch_options',
             'get_available_months',
-            # OD vs Collection Routes
+            # OD vs Collection Routes (with consistent decimal formatting)
             'od_auto_map_columns',
             'od_get_exec_branch_options', 
             'od_get_available_months',
@@ -1848,29 +1850,11 @@ def health_check():
             'generate_consolidated_ppt',
             # Proof of Calculation Route
             'generate_proof_of_calculation'
+        ],
+        'updates': [
+            'Budget vs Billed calculations now return consistent 2-decimal formatting',
+            'OD vs Collection calculations now return consistent 2-decimal formatting',
+            'All numeric values formatted as strings with exactly 2 decimal places',
+            'Frontend compatibility improved for percentage columns'
         ]
-    }) 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    })
