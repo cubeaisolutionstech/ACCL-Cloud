@@ -60,7 +60,7 @@ def extract_area_name(area):
     
     return area_upper
 
-# ==================== BILLED CUSTOMERS FUNCTIONS ====================
+# ==================== BILLED CUSTOMERS FUNCTIONS (UNCHANGED) ====================
 
 def auto_map_customer_columns(sales_df):
     """Auto-map columns for customer analysis"""
@@ -309,7 +309,7 @@ def create_customer_table(sales_df, date_col, branch_col, customer_id_col, execu
             'error': f"Error creating customer table: {str(e)}"
         }
 
-# ==================== OD TARGET FUNCTIONS ====================
+# ==================== OD TARGET FUNCTIONS (UPDATED WITH DECIMAL FORMATTING) ====================
 
 def auto_map_od_columns(os_df):
     """Auto-map columns for OD target analysis"""
@@ -382,7 +382,7 @@ def get_od_options(os_df, due_date_col, area_col, executive_col):
 
 def filter_os_qty(os_df, os_area_col, os_qty_col, os_due_date_col, os_exec_col, 
                   selected_branches=None, selected_years=None, till_month=None, selected_executives=None):
-    """Filter OS quantity data based on selections"""
+    """Filter OS quantity data based on selections with consistent 2-decimal formatting"""
     try:
         required_columns = [os_area_col, os_qty_col, os_due_date_col, os_exec_col]
         for col in required_columns:
@@ -494,7 +494,11 @@ def filter_os_qty(os_df, os_area_col, os_qty_col, os_due_date_col, os_exec_col,
         # Add total row
         total_row = pd.DataFrame([{'Executive': 'TOTAL', 'TARGET': result_df['TARGET'].sum()}])
         result_df = pd.concat([result_df, total_row], ignore_index=True)
-        result_df['TARGET'] = result_df['TARGET'].round(2)
+        
+        # ✅ CONSISTENT DECIMAL FORMATTING: Apply 2-decimal formatting to TARGET column
+        result_df['TARGET'] = result_df['TARGET'].round(2).apply(lambda x: f"{x:.2f}")
+        
+        logger.info("OD Target calculation completed successfully with consistent decimal formatting")
         
         return {
             'success': True,
