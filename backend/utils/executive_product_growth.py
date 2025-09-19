@@ -213,6 +213,7 @@ def calculate_product_growth(ly_df, cy_df, budget_df, ly_month, cy_month, ly_dat
                             selected_executives=None, selected_company_groups=None, selected_product_groups=None):
     """
     Calculate product growth for last year, current year, and budget data, aligned with Streamlit logic.
+    Now includes consistent 2-decimal formatting for all numeric values.
     """
     try:
         logger.info("Starting product growth calculation...")
@@ -381,26 +382,13 @@ def calculate_product_growth(ly_df, cy_df, budget_df, ly_month, cy_month, ly_dat
             logger.error("No valid company groups found in the data.")
             return {"success": False, "error": "No valid company groups found in the data. Please check company group columns."}
         
-        # Helper functions for calculations
-        def calc_achievement(row, cy_col, ly_col):
-            """Calculate achievement percentage for individual products"""
-            if pd.isna(row[ly_col]) or row[ly_col] == 0:
-                return 0.00 if row[cy_col] == 0 else 100.00
-            return round(((row[cy_col] - row[ly_col]) / row[ly_col]) * 100, 2)
-
-        def calc_total_growth_percentage(total_cy, total_ly):
-            """Calculate total growth percentage based on total values"""
-            if pd.isna(total_ly) or total_ly == 0:
-                return 0.00 if total_cy == 0 else 100.00
-            return round(((total_cy - total_ly) / total_ly) * 100, 2)
-        
         # Result dictionary
         result = {}
         
         for company in company_groups:
             # Initialize DataFrames
-            qty_df = pd.DataFrame(columns=['PRODUCT GROUP', 'LY_QTY', 'BUDGET_QTY', 'CY_QTY', 'ACHIEVEMENT %'])
-            value_df = pd.DataFrame(columns=['PRODUCT GROUP', 'LY_VALUE', 'BUDGET_VALUE', 'CY_VALUE', 'ACHIEVEMENT %'])
+            qty_df = pd.DataFrame(columns=['PRODUCT GROUP', 'LY_QTY', 'BUDGET_QTY', 'CY_QTY'])
+            value_df = pd.DataFrame(columns=['PRODUCT GROUP', 'LY_VALUE', 'BUDGET_VALUE', 'CY_VALUE'])
             
             # Filter data for this company
             ly_company_df = ly_filtered_df[ly_filtered_df[ly_company_group_col] == company]
@@ -451,6 +439,7 @@ def calculate_product_growth(ly_df, cy_df, budget_df, ly_month, cy_month, ly_dat
             product_qty_df = pd.DataFrame({'PRODUCT GROUP': company_product_groups})
             product_value_df = pd.DataFrame({'PRODUCT GROUP': company_product_groups})
             
+            # Store the data first, then calculate ALL percentages at once
             # Merge data
             qty_df = product_qty_df.merge(ly_qty[['PRODUCT GROUP', 'LY_QTY']], on='PRODUCT GROUP', how='left')\
                                    .merge(budget_qty[['PRODUCT GROUP', 'BUDGET_QTY']], on='PRODUCT GROUP', how='left')\
@@ -460,11 +449,7 @@ def calculate_product_growth(ly_df, cy_df, budget_df, ly_month, cy_month, ly_dat
                                        .merge(budget_value[['PRODUCT GROUP', 'BUDGET_VALUE']], on='PRODUCT GROUP', how='left')\
                                        .merge(cy_value[['PRODUCT GROUP', 'CY_VALUE']], on='PRODUCT GROUP', how='left').fillna(0)
             
-            # Calculate achievement percentages for individual products
-            qty_df['ACHIEVEMENT %'] = qty_df.apply(lambda row: calc_achievement(row, 'CY_QTY', 'LY_QTY'), axis=1)
-            value_df['ACHIEVEMENT %'] = value_df.apply(lambda row: calc_achievement(row, 'CY_VALUE', 'LY_VALUE'), axis=1)
-            
-            # Round all numeric columns to 2 decimal places
+            # Round all numeric columns to 2 decimal places BEFORE any calculation
             numeric_cols_qty = ['LY_QTY', 'BUDGET_QTY', 'CY_QTY']
             numeric_cols_value = ['LY_VALUE', 'BUDGET_VALUE', 'CY_VALUE']
             
@@ -474,26 +459,21 @@ def calculate_product_growth(ly_df, cy_df, budget_df, ly_month, cy_month, ly_dat
             for col in numeric_cols_value:
                 value_df[col] = value_df[col].round(2)
             
-            # Reorder columns
-            qty_df = qty_df[['PRODUCT GROUP', 'LY_QTY', 'BUDGET_QTY', 'CY_QTY', 'ACHIEVEMENT %']]
-            value_df = value_df[['PRODUCT GROUP', 'LY_VALUE', 'BUDGET_VALUE', 'CY_VALUE', 'ACHIEVEMENT %']]
-            
-            # Calculate totals correctly
+            # Calculate totals first
             total_ly_qty = qty_df['LY_QTY'].sum()
-            total_cy_qty = qty_df['CY_QTY'].sum()
+            total_cy_qty = qty_df['CY_QTY'].sum() 
             total_budget_qty = qty_df['BUDGET_QTY'].sum()
             
             total_ly_value = value_df['LY_VALUE'].sum()
             total_cy_value = value_df['CY_VALUE'].sum()
             total_budget_value = value_df['BUDGET_VALUE'].sum()
             
-            # Add total rows with correct growth calculation
+            # Add total rows first
             qty_totals = pd.DataFrame({
                 'PRODUCT GROUP': ['TOTAL'],
                 'LY_QTY': [round(total_ly_qty, 2)],
                 'BUDGET_QTY': [round(total_budget_qty, 2)],
                 'CY_QTY': [round(total_cy_qty, 2)],
-                'ACHIEVEMENT %': [calc_total_growth_percentage(total_cy_qty, total_ly_qty)]
             })
             qty_df = pd.concat([qty_df, qty_totals], ignore_index=True)
             
@@ -502,9 +482,43 @@ def calculate_product_growth(ly_df, cy_df, budget_df, ly_month, cy_month, ly_dat
                 'LY_VALUE': [round(total_ly_value, 2)],
                 'BUDGET_VALUE': [round(total_budget_value, 2)],
                 'CY_VALUE': [round(total_cy_value, 2)],
-                'ACHIEVEMENT %': [calc_total_growth_percentage(total_cy_value, total_ly_value)]
             })
             value_df = pd.concat([value_df, value_totals], ignore_index=True)
+            
+            # NOW CALCULATE ALL GROWTH % USING IDENTICAL FORMULA
+            # One function, one formula, applied to every single row identically
+            qty_growth_list = []
+            for _, row in qty_df.iterrows():
+                cy = float(row['CY_QTY'])
+                ly = float(row['LY_QTY'])
+                if ly == 0:
+                    growth = 0.00 if cy == 0 else 100.00
+                else:
+                    growth = round(((cy - ly) / ly) * 100, 2)
+                qty_growth_list.append(growth)
+            qty_df['ACHIEVEMENT %'] = qty_growth_list
+            
+            value_growth_list = []
+            for _, row in value_df.iterrows():
+                cy = float(row['CY_VALUE'])
+                ly = float(row['LY_VALUE'])
+                if ly == 0:
+                    growth = 0.00 if cy == 0 else 100.00
+                else:
+                    growth = round(((cy - ly) / ly) * 100, 2)
+                value_growth_list.append(growth)
+            value_df['ACHIEVEMENT %'] = value_growth_list
+            
+            # Reorder columns
+            qty_df = qty_df[['PRODUCT GROUP', 'LY_QTY', 'BUDGET_QTY', 'CY_QTY', 'ACHIEVEMENT %']]
+            value_df = value_df[['PRODUCT GROUP', 'LY_VALUE', 'BUDGET_VALUE', 'CY_VALUE', 'ACHIEVEMENT %']]
+            
+            # ✅ CONSISTENT DECIMAL FORMATTING: Apply 2-decimal formatting to all numeric columns
+            for df in [qty_df, value_df]:
+                numeric_cols = df.select_dtypes(include=[np.number]).columns
+                for col in numeric_cols:
+                    # Format to exactly 2 decimal places
+                    df[col] = df[col].round(2).apply(lambda x: f"{x:.2f}")
             
             # Store result
             result[company] = {'qty_df': qty_df, 'value_df': value_df}
@@ -513,7 +527,7 @@ def calculate_product_growth(ly_df, cy_df, budget_df, ly_month, cy_month, ly_dat
             logger.error("No data available after filtering.")
             return {"success": False, "error": "No data available after filtering. Please review filters and data."}
         
-        logger.info("Product growth calculation completed successfully")
+        logger.info("Product growth calculation completed successfully with consistent decimal formatting")
         
         # Convert DataFrames to records for JSON serialization
         for company in result:
@@ -534,17 +548,17 @@ def calculate_product_growth(ly_df, cy_df, budget_df, ly_month, cy_month, ly_dat
         return {'success': False, 'error': f"Error calculating product growth: {str(e)}"}
 
 def load_data(file_path):
-    """Load data from file"""
-    try:
-        if not os.path.isabs(file_path):
-            file_path = os.path.abspath(file_path)
-        
-        if file_path.endswith('.csv'):
-            return pd.read_csv(file_path)
-        elif file_path.endswith(('.xlsx', '.xls')):
-            return pd.read_excel(file_path)
-        else:
-            raise ValueError(f"Unsupported file format: {file_path}")
-    except Exception as e:
-        logger.error(f"Error loading file {file_path}: {str(e)}")
-        raise
+   """Load data from file"""
+   try:
+       if not os.path.isabs(file_path):
+           file_path = os.path.abspath(file_path)
+       
+       if file_path.endswith('.csv'):
+           return pd.read_csv(file_path)
+       elif file_path.endswith(('.xlsx', '.xls')):
+           return pd.read_excel(file_path)
+       else:
+           raise ValueError(f"Unsupported file format: {file_path}")
+   except Exception as e:
+       logger.error(f"Error loading file {file_path}: {str(e)}")
+       raise
