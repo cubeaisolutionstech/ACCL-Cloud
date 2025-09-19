@@ -310,9 +310,9 @@ const SalesFormat = ({
   if (loading) {
     return (
       <div className="text-center py-12">
-        <RefreshCw size={40} className="animate-spin text-blue-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium mb-2">Processing data...</h3>
-        <p className="text-gray-600">Loading sales, budget, and last year data</p>
+        {/* <RefreshCw size={40} className="animate-spin text-blue-500 mx-auto mb-4" /> */}
+        {/* <h3 className="text-lg font-medium mb-2">Processing data...</h3> */}
+        {/* <p className="text-gray-600">Loading sales, budget, and last year data</p> */}
       </div>
     );
   }
