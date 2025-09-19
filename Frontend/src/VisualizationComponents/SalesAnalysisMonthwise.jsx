@@ -668,7 +668,7 @@ const SalesAnalysisMonthwise = ({
               title="Generate, download and store in Combined Data Manager"
             >
               <Save size={16} />
-              {loading ? 'Processing...' : 'Generate & Store Excel File'}
+              {loading ? 'Processing...' : 'Download SalesMonthwise Report'}
             </button>
           </div>
         </div>
