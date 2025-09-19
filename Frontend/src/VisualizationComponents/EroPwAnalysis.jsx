@@ -620,7 +620,7 @@ const EROPWAnalysis = ({
           onClick={() => setActiveSubTab('mt')}
           disabled={!eroPwData.mt_data && !processing}
         >
-          SALES in MT
+          SALES in Tonage
           {eroPwData.mt_data && <span className="data-indicator"></span>}
         </button>
         <button
