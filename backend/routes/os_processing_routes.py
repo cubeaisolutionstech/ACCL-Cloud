@@ -29,7 +29,7 @@ def api_process_os_file():
     # Save to in-memory Excel file
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        processed_df.to_excel(writer, index=False, sheet_name="Processed")
+        processed_df.to_excel(writer, index=False, sheet_name="Sheet1")
     output.seek(0)
 
     # Return as downloadable file
