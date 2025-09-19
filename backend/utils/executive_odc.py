@@ -255,6 +255,7 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
                         selected_executives, selected_branches=None):
     """
     Flask version of OD Target vs Collection calculation with improved individual executive report logic
+    and consistent 2-decimal formatting
     """
     try:
         # Convert and validate numeric cols
@@ -423,7 +424,7 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
         # Remove HO/HEAD OFFICE
         final = final[~final["Executive"].str.upper().isin(["HO", "HEAD OFFICE"])]
 
-        # Scale + rounding
+        # Scale + rounding (but not final formatting yet)
         val_cols = ["Due Target", "Collection Achieved", "For the month Overdue", "For the month Collection"]
         final[val_cols] = final[val_cols].div(100000).round(2)
         final[["Overall % Achieved", "% Achieved (Selected Month)"]] = final[["Overall % Achieved", "% Achieved (Selected Month)"]].round(2)
@@ -445,10 +446,16 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
                 if weights.sum() > 0:
                     total_row[col] = round(np.average(final[col], weights=weights), 2)
                 else:
-                    total_row[col] = 0
+                    total_row[col] = 0.0
             else:
                 total_row[col] = round(final[col].sum(), 2)
         final = pd.concat([final, pd.DataFrame([total_row])], ignore_index=True)
+
+        # ✅ CONSISTENT DECIMAL FORMATTING: Apply 2-decimal formatting to all numeric columns
+        numeric_cols = final.select_dtypes(include=[np.number]).columns
+        for col in numeric_cols:
+            # Format to exactly 2 decimal places
+            final[col] = final[col].round(2).apply(lambda x: f"{x:.2f}")
 
         result = {
             "success": True, 
@@ -464,6 +471,7 @@ def calculate_od_values(os_jan, os_feb, total_sale, selected_month_str,
         import traceback
         traceback.print_exc()
         return {"success": False, "error": str(e)}
+
 def load_data(file_path):
     """Load data from CSV or Excel file"""
     try:
