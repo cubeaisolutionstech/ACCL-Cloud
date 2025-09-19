@@ -623,7 +623,7 @@ const TSPWAnalysis = ({
           onClick={() => setActiveSubTab('mt')}
           disabled={!tsPwData.mt_data && !processing}
         >
-          SALES in MT
+          SALES in Tonage
           {tsPwData.mt_data && <span className="data-indicator"></span>}
         </button>
         <button
@@ -650,7 +650,7 @@ const TSPWAnalysis = ({
             {tsPwData.mt_data ? (
               <DataTable
                 data={tsPwData.mt_data}
-                title={`TS-PW Monthly Budget and Actual Tonnage (NORTH) [${fiscalInfo.current_year || tsPwData.fiscal_year || '25-26'}]`}
+                title={`TS-PW Monthly Budget and Actual Tonage (NORTH) [${fiscalInfo.current_year || tsPwData.fiscal_year || '25-26'}]`}
                 analysisType="mt"
               />
             ) : (
