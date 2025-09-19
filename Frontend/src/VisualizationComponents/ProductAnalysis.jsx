@@ -811,7 +811,7 @@ const ProductAnalysis = ({
           onClick={() => setActiveSubTab('mt')}
           disabled={!productData.mt && !processing}
         >
-          SALES in MT
+          SALES in Tonage
           {productData.mt && <span className="data-indicator"></span>}
         </button>
         <button
@@ -838,7 +838,7 @@ const ProductAnalysis = ({
             {productData.mt ? (
               <DataTable
                 data={productData.mt}
-                title={`Product-wise Budget and Actual Tonnage (Month-wise) [${getFiscalYearDisplay(fiscalInfo)}]`}
+                title={`Product-wise Budget and Actual Tonage (Month-wise) [${getFiscalYearDisplay(fiscalInfo)}]`}
                 analysisType="mt"
               />
             ) : (
