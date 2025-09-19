@@ -700,7 +700,7 @@ const ExecutiveODC = () => {
 
           {/* Success Message */}
           <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            ✅ Results calculated and automatically added to consolidated reports!
+            Results calculated and automatically added to consolidated reports!
           </div>
 
           {/* Download PPT Button */}
@@ -718,70 +718,72 @@ const ExecutiveODC = () => {
           {results.od_results && results.od_results.length > 0 && (
             <div className="mb-8">
               <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                OD Targetvs Collection - {filters.selectedMonth} (Value in Lakhs)
-             </h4>
-             <div className="overflow-x-auto">
-               <table className="min-w-full table-auto border-collapse border border-gray-300">
-                 <thead>
-                   <tr className="bg-purple-600 text-white">
-                     {[
-                       'Executive',
-                       'Due Target',
-                       'Collection Achieved',
-                       'Overall % Achieved',
-                       'For the month Overdue',
-                       'For the month Collection',
-                       'For the month % Achieved'
-                     ].map(col => (
-                       <th key={col} className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                         {col}
-                       </th>
-                     ))}
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {results.od_results.map((row, i) => (
-                     <tr 
-                       key={i} 
-                       className={`
-                         ${row.Executive === 'TOTAL' 
-                           ? 'bg-gray-200 font-bold border-t-2 border-gray-400' 
-                           : i % 2 === 0 
-                             ? 'bg-gray-50' 
-                             : 'bg-white'
-                         } hover:bg-purple-50
-                       `}
-                     >
-                       <td className="border border-gray-300 px-4 py-2">{row.Executive}</td>
-                       <td className="border border-gray-300 px-4 py-2">
-                         {typeof row['Due Target'] === 'number' ? row['Due Target'].toLocaleString() : row['Due Target']}
-                       </td>
-                       <td className="border border-gray-300 px-4 py-2">
-                         {typeof row['Collection Achieved'] === 'number' ? row['Collection Achieved'].toLocaleString() : row['Collection Achieved']}
-                       </td>
-                       <td className="border border-gray-300 px-4 py-2">
-                         {typeof row['Overall % Achieved'] === 'number' ? `${row['Overall % Achieved'].toFixed(2)}%` : row['Overall % Achieved']}
-                       </td>
-                       <td className="border border-gray-300 px-4 py-2">
-                         {typeof row['For the month Overdue'] === 'number' ? row['For the month Overdue'].toLocaleString() : row['For the month Overdue']}
-                       </td>
-                       <td className="border border-gray-300 px-4 py-2">
-                         {typeof row['For the month Collection'] === 'number' ? row['For the month Collection'].toLocaleString() : row['For the month Collection']}
-                       </td>
-                       <td className="border border-gray-300 px-4 py-2">
-                         {typeof row['% Achieved (Selected Month)'] === 'number' ? `${row['% Achieved (Selected Month)'].toFixed(2)}%` : row['For the month % Achieved']}
-                       </td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
-             </div>
-           </div>
-         )}
-       </div>
-     )}
-   </div>
- );
+                OD Target vs Collection - {filters.selectedMonth} (Value in Lakhs)
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full table-auto border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-purple-600 text-white">
+                      {[
+                        'Executive',
+                        'Due Target',
+                        'Collection Achieved',
+                        'Overall % Achieved',
+                        'For the month Overdue',
+                        'For the month Collection',
+                        'For the month % Achieved'
+                      ].map(col => (
+                        <th key={col} className="border border-gray-300 px-4 py-2 text-left font-semibold">
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.od_results.map((row, i) => (
+                      <tr 
+                        key={i} 
+                        className={`
+                          ${row.Executive === 'TOTAL' 
+                            ? 'bg-gray-200 font-bold border-t-2 border-gray-400' 
+                            : i % 2 === 0 
+                              ? 'bg-gray-50' 
+                              : 'bg-white'
+                          } hover:bg-purple-50
+                        `}
+                      >
+                        <td className="border border-gray-300 px-4 py-2">{row.Executive}</td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {typeof row['Due Target'] === 'number' ? row['Due Target'].toLocaleString() : row['Due Target']}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {typeof row['Collection Achieved'] === 'number' ? row['Collection Achieved'].toLocaleString() : row['Collection Achieved']}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {typeof row['Overall % Achieved'] === 'number' ? `${row['Overall % Achieved'].toFixed(2)}%` : `${row['Overall % Achieved']}%`}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {typeof row['For the month Overdue'] === 'number' ? row['For the month Overdue'].toLocaleString() : row['For the month Overdue']}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {typeof row['For the month Collection'] === 'number' ? row['For the month Collection'].toLocaleString() : row['For the month Collection']}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {typeof row['% Achieved (Selected Month)'] === 'number' 
+                            ? `${row['% Achieved (Selected Month)'].toFixed(2)}%` 
+                            : `${row['% Achieved (Selected Month)'] || '0.00'}%`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default ExecutiveODC;
