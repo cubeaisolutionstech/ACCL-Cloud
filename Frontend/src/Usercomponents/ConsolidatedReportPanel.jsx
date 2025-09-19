@@ -38,20 +38,87 @@ const ConsolidatedReportPanel = () => {
     return orderMap[category] || 999; // Unknown categories go to the end
   };
 
-  // Sort reports by category order
+  // Enhanced sub-ordering within categories - FIXED VERSION
+  const getSubOrder = (title, category) => {
+    const titleLower = (title || '').toLowerCase();
+    
+    // For budget category reports - Budget vs Billed should come before Overall Sales
+    if (category === 'budget_results' || category === 'branch_budget_results') {
+      if (titleLower.includes('budget vs billed') || 
+          titleLower.includes('target vs billed') || 
+          titleLower.includes('target against billed') ||
+          titleLower.includes('budget against billed')) {
+        return 1; // Budget vs Billed / Target vs Billed first
+      } else if (titleLower.includes('overall sales')) {
+        return 2; // Overall Sales second
+      }
+      return 3; // Other budget reports last
+    }
+    
+    // For OD Collection category
+    if (category === 'od_vs_results' || category === 'branch_od_vs_results') {
+      if (titleLower.includes('quantity')) {
+        return 1; // Quantity reports first
+      } else if (titleLower.includes('value')) {
+        return 2; // Value reports second
+      }
+    }
+    
+    // For Product Growth category
+    if (category === 'product_results' || category === 'branch_product_results' || category === 'product_growth_results') {
+      if (titleLower.includes('quantity')) {
+        return 1; // Quantity reports first
+      } else if (titleLower.includes('value')) {
+        return 2; // Value reports second
+      }
+    }
+    
+    // For Customer category
+    if (category === 'customers_results' || category === 'branch_nbc_results') {
+      if (titleLower.includes('quantity')) {
+        return 1; // Quantity reports first
+      } else if (titleLower.includes('value')) {
+        return 2; // Value reports second
+      }
+    }
+    
+    // For OD Target category
+    if (category === 'od_results' || category === 'branch_od_results_current' || category === 'branch_od_results_previous') {
+      if (titleLower.includes('current')) {
+        return 1; // Current period first
+      } else if (titleLower.includes('previous')) {
+        return 2; // Previous period second
+      }
+    }
+    
+    return 1; // Default sub-order
+  };
+
+  // Enhanced sorting function with proper sub-ordering
   const sortReportsByCategory = (reports) => {
     if (!Array.isArray(reports)) return [];
     
     return [...reports].sort((a, b) => {
-      const orderA = getCategoryOrder(a.category || 'unknown');
-      const orderB = getCategoryOrder(b.category || 'unknown');
+      const categoryA = a.category || 'unknown';
+      const categoryB = b.category || 'unknown';
+      
+      const orderA = getCategoryOrder(categoryA);
+      const orderB = getCategoryOrder(categoryB);
       
       // Primary sort by category order
       if (orderA !== orderB) {
         return orderA - orderB;
       }
       
-      // Secondary sort by title for reports in the same category
+      // Secondary sort by sub-order within same category
+      const subOrderA = getSubOrder(a.title, categoryA);
+      const subOrderB = getSubOrder(b.title, categoryB);
+      
+      if (subOrderA !== subOrderB) {
+        return subOrderA - subOrderB;
+      }
+      
+      // Tertiary sort by title for reports with same sub-order
       const titleA = (a.title || '').toLowerCase();
       const titleB = (b.title || '').toLowerCase();
       return titleA.localeCompare(titleB);
@@ -64,6 +131,12 @@ const ConsolidatedReportPanel = () => {
       const reports = getAllReportsForPPT();
       const sortedReports = sortReportsByCategory(reports || []);
       setConsolidatedReports(sortedReports);
+      
+      // Debug: Log the sorted order
+      console.log('📊 Reports sorted in order:');
+      sortedReports.forEach((report, index) => {
+        console.log(`${index + 1}. ${report.title} (category: ${report.category})`);
+      });
     };
 
     loadReports();
@@ -204,13 +277,11 @@ const ConsolidatedReportPanel = () => {
 
       console.log(`📊 Generating consolidated PPT with ${allReportsFlattened.length} reports (Type: ${reportType})`);
       
-      // Log category breakdown with proper order
-      const categoryBreakdown = {};
-      allReportsFlattened.forEach(report => {
-        const category = report.category || 'unknown';
-        categoryBreakdown[category] = (categoryBreakdown[category] || 0) + 1;
+      // Log the final order being sent to backend
+      console.log('📈 Final report order for PPT generation:');
+      allReportsFlattened.forEach((report, index) => {
+        console.log(`${index + 1}. ${report.title} (category: ${report.category})`);
       });
-      console.log('📈 Report breakdown by category (in proper order):', categoryBreakdown);
 
       // Transform data to backend format
       const reportsForBackend = allReportsFlattened.map(report => ({
@@ -304,17 +375,8 @@ const ConsolidatedReportPanel = () => {
         }
         else if (category === 'od_results' || category === 'branch_od_results_current' || category === 'branch_od_results_previous') {
           counts.od_target += 1;
-          console.log(`🎯 OD Target report found at index ${index}: category='${category}', title='${report.title}'`);
-        }
-        else {
-          console.log(`❓ Unknown category found at index ${index}: category='${category}', title='${report.title}'`);
         }
       });
-      
-      // Debug: Log all categories found
-      const allCategories = consolidatedReports.map(report => report.category || 'unknown');
-      console.log('📊 All report categories (in proper order):', allCategories);
-      console.log('🔢 Report counts:', counts);
     }
     return counts;
   };
@@ -354,6 +416,8 @@ const ConsolidatedReportPanel = () => {
               </span>
             </div>
           </div>
+
+
 
           {/* Report Counts - Proper Order: Budget → OD Collection → Product → Customer → OD Target */}
           <div className="grid grid-cols-5 gap-2 mb-4 text-xs">
